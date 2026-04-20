@@ -22,6 +22,9 @@ public class GearVNApp extends JFrame {
     private String orderCity    = "";
     private String orderDistrict = "";
 
+    // Thông tin tài khoản đã đăng nhập
+    private String loggedInUser  = "";   // Rỗng = chưa đăng nhập
+
     public GearVNApp() {
         setTitle("GearVN - App Mua Sắm (All in One)");
         setSize(1200, 800);
@@ -113,6 +116,10 @@ public class GearVNApp extends JFrame {
         mainContentPanel.add(createCheckoutPanel(),  "CHECKOUT");
         mainContentPanel.add(createPaymentPanel(),   "PAYMENT");
         mainContentPanel.add(createSuccessPanel(),   "SUCCESS");
+
+        // Nạp 2 màn hình tài khoản khách hàng
+        mainContentPanel.add(createAccountInfoPanel(),   "ACCOUNT_INFO");
+        mainContentPanel.add(createOrderLookupPanel(),   "ORDER_LOOKUP");
         
         // Mặc định hiện Home đầu tiên
         cardLayout.show(mainContentPanel, "HOME"); 
@@ -943,6 +950,384 @@ public class GearVNApp extends JFrame {
     }
 
     // =========================================================================
+    // MÀN HÌNH TÀI KHOẢN — SIDEBAR DÙNG CHUNG
+    // =========================================================================
+    private JPanel createAccountSidebar(String activeKey) {
+        Color RED  = new Color(227, 28, 37);
+        JPanel sidebar = new JPanel();
+        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
+        sidebar.setBackground(Color.WHITE);
+        sidebar.setPreferredSize(new Dimension(210, 0));
+        sidebar.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(25, 0, 25, 0)
+        ));
+
+        // Avatar + UserName
+        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        avatarRow.setBackground(Color.WHITE);
+        avatarRow.setMaximumSize(new Dimension(210, 55));
+
+        JLabel avatarIcon = new JLabel("👤") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(200, 200, 200));
+                g2.fillOval(0, 0, getWidth()-1, getHeight()-1);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        avatarIcon.setPreferredSize(new Dimension(40, 40));
+        avatarIcon.setHorizontalAlignment(SwingConstants.CENTER);
+        avatarIcon.setOpaque(false);
+
+        String displayName = loggedInUser.isEmpty() ? "UserName" : loggedInUser;
+        JLabel nameLbl = new JLabel(displayName);
+        nameLbl.setFont(new Font("Arial", Font.BOLD, 14));
+
+        avatarRow.add(avatarIcon);
+        avatarRow.add(nameLbl);
+        sidebar.add(avatarRow);
+        sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
+        sidebar.add(new JSeparator());
+        sidebar.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Menu items
+        String[][] menuItems = {
+            {"👤  Thông tin tài khoản", "ACCOUNT_INFO"},
+            {"🛒  Tra cứu đơn hàng",    "ORDER_LOOKUP"},
+            {"🚪  Đăng xuất",           "LOGOUT"}
+        };
+        for (String[] item : menuItems) {
+            boolean isActive = item[1].equals(activeKey);
+            JPanel row = new JPanel(new BorderLayout());
+            row.setBackground(Color.WHITE);
+            row.setMaximumSize(new Dimension(210, 44));
+            row.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            row.setBorder(new EmptyBorder(8, 18, 8, 8));
+
+            JLabel lbl = new JLabel(item[0]);
+            lbl.setFont(new Font("Arial", isActive ? Font.BOLD : Font.PLAIN, 14));
+            lbl.setForeground(isActive ? RED : Color.DARK_GRAY);
+
+            JLabel arrow = new JLabel("→");
+            arrow.setForeground(isActive ? RED : Color.LIGHT_GRAY);
+            arrow.setFont(new Font("Arial", Font.PLAIN, 14));
+
+            if (isActive) {
+                row.setBorder(BorderFactory.createCompoundBorder(
+                    new MatteBorder(0, 3, 0, 0, RED),
+                    new EmptyBorder(8, 15, 8, 8)
+                ));
+            }
+
+            row.add(lbl, BorderLayout.WEST);
+            row.add(arrow, BorderLayout.EAST);
+
+            String navKey = item[1];
+            row.addMouseListener(new MouseAdapter() {
+                public void mouseClicked(MouseEvent e) {
+                    if ("LOGOUT".equals(navKey)) {
+                        int c = JOptionPane.showConfirmDialog(GearVNApp.this,
+                            "Bạn có chắc muốn đăng xuất?", "Đăng xuất", JOptionPane.YES_NO_OPTION);
+                        if (c == JOptionPane.YES_OPTION) {
+                            loggedInUser = "";
+                            cardLayout.show(mainContentPanel, "HOME");
+                        }
+                    } else {
+                        refreshPage(navKey, navKey.equals("ACCOUNT_INFO")
+                            ? createAccountInfoPanel() : createOrderLookupPanel());
+                        cardLayout.show(mainContentPanel, navKey);
+                    }
+                }
+                public void mouseEntered(MouseEvent e) { row.setBackground(new Color(255, 245, 245)); }
+                public void mouseExited(MouseEvent e)  { row.setBackground(Color.WHITE); }
+            });
+            sidebar.add(row);
+        }
+        return sidebar;
+    }
+
+    // =========================================================================
+    // MÀN HÌNH 1: THÔNG TIN TÀI KHOẢN
+    // =========================================================================
+    private JPanel createAccountInfoPanel() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(new Color(244, 244, 244));
+
+        JPanel body = new JPanel(new BorderLayout(20, 0));
+        body.setBackground(new Color(244, 244, 244));
+        body.setBorder(new EmptyBorder(20, 25, 20, 25));
+
+        // Sidebar trái
+        body.add(createAccountSidebar("ACCOUNT_INFO"), BorderLayout.WEST);
+
+        // Nội dung phải
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBackground(Color.WHITE);
+        content.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(30, 35, 35, 35)
+        ));
+
+        JLabel title = new JLabel("Thông tin tài khoản");
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(title);
+        content.add(Box.createRigidArea(new Dimension(0, 22)));
+
+        // Họ và tên
+        content.add(makeFormLabel("Họ và tên:"));
+        content.add(Box.createRigidArea(new Dimension(0, 5)));
+        JTextField nameField = createStyledTextField(orderName.isEmpty() ? "Họ và tên" : orderName);
+        nameField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        content.add(nameField);
+        content.add(Box.createRigidArea(new Dimension(0, 16)));
+
+        // Giới tính
+        content.add(makeFormLabel("Giới tính:"));
+        content.add(Box.createRigidArea(new Dimension(0, 5)));
+        JPanel genderRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        genderRow.setBackground(Color.WHITE);
+        genderRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        ButtonGroup gGrp = new ButtonGroup();
+        JRadioButton rNam = new JRadioButton("Nam"); rNam.setBackground(Color.WHITE); rNam.setSelected(true);
+        JRadioButton rNu  = new JRadioButton("Nữ");  rNu.setBackground(Color.WHITE);
+        gGrp.add(rNam); gGrp.add(rNu);
+        genderRow.add(rNam); genderRow.add(Box.createHorizontalStrut(20)); genderRow.add(rNu);
+        content.add(genderRow);
+        content.add(Box.createRigidArea(new Dimension(0, 16)));
+
+        // Số điện thoại
+        content.add(makeFormLabel("Số điện thoại:"));
+        content.add(Box.createRigidArea(new Dimension(0, 5)));
+        JTextField phoneField = createStyledTextField(orderPhone.isEmpty() ? "Số điện thoại" : orderPhone);
+        phoneField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        phoneField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        content.add(phoneField);
+        content.add(Box.createRigidArea(new Dimension(0, 16)));
+
+        // Địa chỉ
+        content.add(makeFormLabel("Địa chỉ:"));
+        content.add(Box.createRigidArea(new Dimension(0, 5)));
+        JTextField addrField = createStyledTextField(orderAddress.isEmpty() ? "Số nhà, tên đường" : orderAddress);
+        addrField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        addrField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        content.add(addrField);
+        content.add(Box.createRigidArea(new Dimension(0, 8)));
+
+        JPanel cityRow = new JPanel(new GridLayout(1, 2, 12, 0));
+        cityRow.setBackground(Color.WHITE);
+        cityRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cityRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        String[] phuongs = {"Chọn phường, xã", "Phường Tân Hưng", "Phường Bình Thuận", "Phường 1"};
+        String[] tinhs   = {"Chọn tỉnh, thành phố", "Hồ Chí Minh", "Hà Nội", "Đà Nẵng"};
+        JComboBox<String> cbPhuong = new JComboBox<>(phuongs);
+        JComboBox<String> cbTinh   = new JComboBox<>(tinhs);
+        cbPhuong.setFont(new Font("Arial", Font.PLAIN, 13));
+        cbTinh.setFont(new Font("Arial", Font.PLAIN, 13));
+        cityRow.add(cbPhuong); cityRow.add(cbTinh);
+        content.add(cityRow);
+        content.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        // Nút Lưu thay đổi
+        JButton saveBtn = new JButton("LƯU THAY ĐỔI");
+        saveBtn.setBackground(new Color(227, 28, 37));
+        saveBtn.setForeground(Color.WHITE);
+        saveBtn.setFont(new Font("Arial", Font.BOLD, 15));
+        saveBtn.setFocusPainted(false);
+        saveBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        saveBtn.setBorder(new RoundedBorder(6, new Color(227, 28, 37)));
+        saveBtn.setMaximumSize(new Dimension(200, 44));
+        saveBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        saveBtn.addActionListener(e -> {
+            String name  = nameField.getText().trim();
+            String phone = phoneField.getText().trim();
+            if (!name.isEmpty()  && !name.equals("Họ và tên"))    orderName  = name;
+            if (!phone.isEmpty() && !phone.equals("Số điện thoại")) orderPhone = phone;
+            JOptionPane.showMessageDialog(GearVNApp.this,
+                "Đã lưu thông tin tài khoản thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        });
+        content.add(saveBtn);
+
+        body.add(content, BorderLayout.CENTER);
+
+        JPanel scrollWrap = new JPanel(new BorderLayout());
+        scrollWrap.setBackground(new Color(244, 244, 244));
+        scrollWrap.add(body, BorderLayout.CENTER);
+        scrollWrap.add(createCheckoutFooter(), BorderLayout.SOUTH);
+
+        JScrollPane sp = new JScrollPane(scrollWrap);
+        sp.setBorder(null);
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        wrapper.add(sp, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    // =========================================================================
+    // MÀN HÌNH 2: TRA CỨU ĐƠN HÀNG
+    // =========================================================================
+    private JPanel createOrderLookupPanel() {
+        Color RED  = new Color(227, 28, 37);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(new Color(244, 244, 244));
+
+        JPanel body = new JPanel(new BorderLayout(20, 0));
+        body.setBackground(new Color(244, 244, 244));
+        body.setBorder(new EmptyBorder(20, 25, 20, 25));
+
+        // Sidebar trái
+        body.add(createAccountSidebar("ORDER_LOOKUP"), BorderLayout.WEST);
+
+        // Nội dung phải
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBackground(Color.WHITE);
+        content.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 220, 220), 1),
+            new EmptyBorder(25, 30, 30, 30)
+        ));
+
+        JLabel title = new JLabel("Quản lý đơn hàng");
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(title);
+        content.add(Box.createRigidArea(new Dimension(0, 18)));
+
+        // Tab bar: TẤT CẢ | ĐANG XỬ LÝ | ĐANG VẬN CHUYỂN | HOÀN THÀNH | HỦY
+        String[] tabNames = {"TẤT CẢ", "ĐANG XỬ LÝ", "ĐANG VẬN CHUYỂN", "HOÀN THÀNH", "HỦY"};
+        JPanel tabBar = new JPanel(new GridLayout(1, tabNames.length, 0, 0));
+        tabBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        tabBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        tabBar.setBorder(new MatteBorder(0, 0, 2, 0, new Color(220, 220, 220)));
+
+        // Chỉ tab đầu active
+        for (int i = 0; i < tabNames.length; i++) {
+            boolean active = (i == 0);
+            JLabel tab = new JLabel(tabNames[i], SwingConstants.CENTER);
+            tab.setFont(new Font("Arial", active ? Font.BOLD : Font.PLAIN, 12));
+            tab.setForeground(active ? RED : new Color(100, 100, 100));
+            tab.setOpaque(true);
+            tab.setBackground(Color.WHITE);
+            tab.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            tab.setBorder(active
+                ? new MatteBorder(0, 0, 2, 0, RED)
+                : new EmptyBorder(0, 0, 2, 0));
+            // Hover effect
+            tab.addMouseListener(new MouseAdapter() {
+                public void mouseEntered(MouseEvent e) { if (!tab.getForeground().equals(RED)) tab.setForeground(new Color(80,80,80)); }
+                public void mouseExited(MouseEvent e)  { if (!tab.getForeground().equals(RED)) tab.setForeground(new Color(100,100,100)); }
+            });
+            tabBar.add(tab);
+        }
+        content.add(tabBar);
+        content.add(Box.createRigidArea(new Dimension(0, 16)));
+
+        // Thanh tìm kiếm
+        JPanel searchRow = new JPanel(new BorderLayout(8, 0));
+        searchRow.setBackground(Color.WHITE);
+        searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+
+        JTextField searchField = new JTextField("Tìm kiếm theo tên, số đơn hàng...");
+        searchField.setForeground(Color.GRAY);
+        searchField.setFont(new Font("Arial", Font.PLAIN, 13));
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(200, 200, 200), 1),
+            new EmptyBorder(4, 10, 4, 10)
+        ));
+        searchField.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (searchField.getText().startsWith("Tìm kiếm")) {
+                    searchField.setText(""); searchField.setForeground(Color.BLACK);
+                }
+            }
+            public void focusLost(FocusEvent e) {
+                if (searchField.getText().isEmpty()) {
+                    searchField.setText("Tìm kiếm theo tên, số đơn hàng...");
+                    searchField.setForeground(Color.GRAY);
+                }
+            }
+        });
+
+        JButton searchBtn = new JButton("🔍");
+        searchBtn.setBackground(RED);
+        searchBtn.setForeground(Color.WHITE);
+        searchBtn.setBorder(new EmptyBorder(6, 14, 6, 14));
+        searchBtn.setFocusPainted(false);
+        searchBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        searchRow.add(searchField, BorderLayout.CENTER);
+        searchRow.add(searchBtn, BorderLayout.EAST);
+        content.add(searchRow);
+        content.add(Box.createRigidArea(new Dimension(0, 30)));
+
+        // Vùng trống — chưa có đơn hàng
+        JPanel emptyState = new JPanel(new GridBagLayout());
+        emptyState.setBackground(Color.WHITE);
+        emptyState.setAlignmentX(Component.LEFT_ALIGNMENT);
+        emptyState.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+        JPanel emptyInner = new JPanel();
+        emptyInner.setLayout(new BoxLayout(emptyInner, BoxLayout.Y_AXIS));
+        emptyInner.setBackground(Color.WHITE);
+
+        JLabel emptyIcon = new JLabel("🛒", SwingConstants.CENTER);
+        emptyIcon.setFont(new Font("Arial", Font.PLAIN, 38));
+        emptyIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel emptyMsg = new JLabel("Bạn chưa đặt hàng sản phẩm nào");
+        emptyMsg.setFont(new Font("Arial", Font.PLAIN, 15));
+        emptyMsg.setForeground(new Color(130, 130, 130));
+        emptyMsg.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton shopNowBtn = new JButton("Mua sắm ngay");
+        shopNowBtn.setBackground(RED);
+        shopNowBtn.setForeground(Color.WHITE);
+        shopNowBtn.setFont(new Font("Arial", Font.BOLD, 13));
+        shopNowBtn.setFocusPainted(false);
+        shopNowBtn.setBorder(new RoundedBorder(6, RED));
+        shopNowBtn.setPreferredSize(new Dimension(160, 38));
+        shopNowBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        shopNowBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        shopNowBtn.addActionListener(e -> cardLayout.show(mainContentPanel, "HOME"));
+
+        emptyInner.add(emptyIcon);
+        emptyInner.add(Box.createRigidArea(new Dimension(0, 10)));
+        emptyInner.add(emptyMsg);
+        emptyInner.add(Box.createRigidArea(new Dimension(0, 16)));
+        emptyInner.add(shopNowBtn);
+        emptyState.add(emptyInner);
+        content.add(emptyState);
+
+        body.add(content, BorderLayout.CENTER);
+
+        JPanel scrollWrap = new JPanel(new BorderLayout());
+        scrollWrap.setBackground(new Color(244, 244, 244));
+        scrollWrap.add(body, BorderLayout.CENTER);
+        scrollWrap.add(createCheckoutFooter(), BorderLayout.SOUTH);
+
+        JScrollPane sp = new JScrollPane(scrollWrap);
+        sp.setBorder(null);
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        wrapper.add(sp, BorderLayout.CENTER);
+        return wrapper;
+    }
+
+    // Helper nhỏ: tạo JLabel nhãn form căn trái
+    private JLabel makeFormLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Arial", Font.PLAIN, 14));
+        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return lbl;
+    }
+
+    // =========================================================================
     // 1. MÀN HÌNH TRANG CHỦ
     // =========================================================================
     private JPanel createHomePanel() {
@@ -1375,9 +1760,10 @@ public class GearVNApp extends JFrame {
                 JOptionPane.showMessageDialog(GearVNApp.this,
                     "Vui lòng nhập đầy đủ Email và Mật khẩu.", "Lỗi đăng nhập", JOptionPane.WARNING_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(GearVNApp.this,
-                    "Đăng nhập thành công! Chào mừng bạn.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                cardLayout.show(mainContentPanel, "HOME");
+                // Lấy phần trước @ làm tên hiển thị
+                loggedInUser = email.contains("@") ? email.split("@")[0] : email;
+                refreshPage("ACCOUNT_INFO", createAccountInfoPanel());
+                cardLayout.show(mainContentPanel, "ACCOUNT_INFO");
             }
         });
         JLabel orLabel = new JLabel("hoặc đăng nhập bằng");
