@@ -5,16 +5,6 @@ import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 
-/**
- * GearVNApp — PHẦN GIAO DIỆN (Frontend Only)
- *
- * Tất cả logic nghiệp vụ đã được tách ra:
- *   - Quản lý giỏ hàng   → CartService
- *   - Xác thực / Đăng nhập → AuthService
- *   - Đặt hàng / Thanh toán → OrderService
- *
- * Các chỗ cần backend tích hợp đều được đánh dấu "TODO [Backend]".
- */
 public class GearVNApp extends JFrame {
 
     private CardLayout cardLayout;
@@ -1787,9 +1777,6 @@ public class GearVNApp extends JFrame {
         }
     }
 
-    // =========================================================================
-    // ENTRY POINT
-    // =========================================================================
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GearVNApp().setVisible(true));
     }
