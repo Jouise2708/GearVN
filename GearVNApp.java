@@ -1,5 +1,4 @@
 package gearvn.ui;
-
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -120,6 +119,10 @@ public class GearVNApp extends JFrame {
 
     private void addToCartAndShow(String productName, String productPrice) {
         // Xóa giỏ hàng cũ để cập nhật mới
+        new Thread(() -> {
+            String json = "{ \"productName\":\"" + productName + "\", \"price\":\"" + productPrice + "\" }";
+            ApiClient.post("/api/cart/add", json);
+        }).start();
         for (Component c : mainContentPanel.getComponents()) {
             if ("CART".equals(c.getName())) {
                 mainContentPanel.remove(c);
@@ -826,6 +829,11 @@ public class GearVNApp extends JFrame {
                 JOptionPane.showMessageDialog(GearVNApp.this,
                     "Vui lòng nhập nội dung đánh giá.", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE); return;
             }
+            String json = String.format(
+                "{\"name\":\"%s\",\"rating\":%d,\"comment\":\"%s\"}",
+                name, rating, body
+            );
+            System.out.println(json);
             reviewListPanel.remove(emptyReviewLbl);
             JPanel newCard = buildReviewCard(name, rating, body, GOLD);
             reviewListPanel.add(newCard);
@@ -1067,8 +1075,37 @@ public class GearVNApp extends JFrame {
             public void mouseClicked(MouseEvent e) { cardLayout.show(mainContentPanel, "FORGOT_PASS"); }
         });
         forgotPanel.add(forgotLabel);
-
         JButton loginBtn = createStyledButton("Đăng nhập", new Color(227, 28, 37));
+        loginBtn.addActionListener(e -> {
+
+            String email = emailField.getText().trim();
+            String pass  = String.valueOf(passField.getPassword()).trim();
+
+            if (email.isEmpty() || email.equals("E-mail") 
+            	    || pass.isEmpty() || pass.equals("Password")) {
+            	    JOptionPane.showMessageDialog(this, "Nhập email và password");
+            	    return;
+            	}
+
+            String json = String.format(
+                "{\"email\":\"%s\",\"password\":\"%s\"}",
+                email.replace("\"", ""),
+                pass.replace("\"", "")
+            );
+
+            new Thread(() -> {
+                String res = ApiClient.post("/api/auth/login", json);
+
+                SwingUtilities.invokeLater(() -> {
+                    if (res != null && !res.isEmpty() && !res.equals("null")) {
+                        JOptionPane.showMessageDialog(this, "Login OK");
+                        cardLayout.show(mainContentPanel, "HOME");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Login FAIL (check backend)");
+                    }
+                });
+            }).start();
+        });
         JLabel orLabel = new JLabel("hoặc đăng nhập bằng");
         orLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         orLabel.setForeground(Color.GRAY);
@@ -1140,6 +1177,36 @@ public class GearVNApp extends JFrame {
         });
 
         JButton registerBtn = createStyledButton("Tạo tài khoản", new Color(227, 28, 37));
+        registerBtn.addActionListener(e -> {
+            String email = emailField.getText().trim();
+            String ho    = hoField.getText().trim();
+            String ten   = tenField.getText().trim();
+            String pass  = String.valueOf(passField.getPassword()).trim();
+
+            // Loại bỏ placeholder chưa được xóa
+            if (email.equals("E-mail") || ho.equals("Họ") || ten.equals("Tên")
+                    || pass.equals("Mật khẩu") || email.isEmpty() || pass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin");
+                return;
+            }
+
+            String json = String.format(
+                "{\"email\":\"%s\",\"name\":\"%s %s\",\"password\":\"%s\"}",
+                email, ho, ten, pass
+            );
+
+            new Thread(() -> {
+                String res = ApiClient.post("/api/auth/register", json);
+                SwingUtilities.invokeLater(() -> {
+                    if (res != null && !res.isEmpty() && !res.equals("null")) {
+                        JOptionPane.showMessageDialog(this, "Đăng ký thành công! Mời đăng nhập.");
+                        cardLayout.show(mainContentPanel, "LOGIN");
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Đăng ký thất bại (email đã tồn tại?)");
+                    }
+                });
+            }).start();
+        });
         JLabel orLabel = new JLabel("hoặc đăng ký bằng");
         orLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         orLabel.setForeground(Color.GRAY);
