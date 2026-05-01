@@ -1,4 +1,4 @@
-﻿CREATE DATABASE gearvn;
+CREATE DATABASE gearvn;
 
 USE gearvn;
 
@@ -11,7 +11,7 @@ CREATE TABLE users (
 
 INSERT INTO users (email, password, name) VALUES
 (N'admin@gmail.com', N'123456', N'Admin'),
-(N'user@gmail.com', N'123456', N'User');
+(N'user@gmail.com',  N'123456', N'User');
 
 
 CREATE TABLE products (
@@ -131,7 +131,3 @@ SELECT * FROM users
 SELECT * FROM orders
 
 DELETE FROM products;
-
-
-
-
