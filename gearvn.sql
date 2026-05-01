@@ -10,8 +10,9 @@ CREATE TABLE users (
 );
 
 INSERT INTO users (email, password, name) VALUES
-(N'admin@gmail.com', N'123456', N'Admin'),
-(N'user@gmail.com',  N'123456', N'User');
+(N'admin@gmail.com', N'$2b$10$8i2zj7wh4k2dCUkk5O/J3e19mutphYMEyff4fNIOXAcyzF/YXarSS', N'Admin'),
+(N'user@gmail.com',  N'$2b$10$8i2zj7wh4k2dCUkk5O/J3e19mutphYMEyff4fNIOXAcyzF/YXarSS', N'User');
+-- Cả hai tài khoản dùng password: 123456
 
 
 CREATE TABLE products (
