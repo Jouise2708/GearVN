@@ -3,6 +3,19 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.io.IOException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import javax.imageio.ImageIO;
+import java.io.*;
+import java.util.Properties;
+import java.util.Base64;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class GearVNApp extends JFrame {
 
@@ -451,23 +464,55 @@ public class GearVNApp extends JFrame {
         imageSection.setLayout(new BoxLayout(imageSection, BoxLayout.Y_AXIS));
         imageSection.setBackground(Color.WHITE);
         
-        JPanel mainImageMock = new JPanel(new BorderLayout());
-        mainImageMock.setBackground(new Color(230, 230, 230));
-        mainImageMock.setPreferredSize(new Dimension(450, 350));
-        JLabel imgText = new JLabel("HÌNH ẢNH SẢN PHẨM", SwingConstants.CENTER);
-        imgText.setForeground(Color.GRAY);
-        mainImageMock.add(imgText, BorderLayout.CENTER);
-        imageSection.add(mainImageMock);
+        // ===== ẢNH CHÍNH =====
+        JPanel mainImagePanel = new JPanel(new BorderLayout());
+        mainImagePanel.setBackground(new Color(230, 230, 230));
+        mainImagePanel.setPreferredSize(new Dimension(450, 350));
+        mainImagePanel.setMaximumSize(new Dimension(450, 350));
+
+        JLabel mainImgLabel = new JLabel("Đang tải ảnh...", SwingConstants.CENTER);
+        mainImgLabel.setFont(new Font("Arial", Font.PLAIN, 13));
+        mainImgLabel.setForeground(Color.GRAY);
+        mainImagePanel.add(mainImgLabel, BorderLayout.CENTER);
+
+        // Nút 📷 để đổi ảnh ngay trong trang chi tiết
+        JButton camBtnDetail = new JButton("📷 Đổi ảnh");
+        camBtnDetail.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 12));
+        camBtnDetail.setFocusPainted(false);
+        camBtnDetail.setBackground(Color.WHITE);
+        camBtnDetail.setBorder(new LineBorder(new Color(200,200,200)));
+        camBtnDetail.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        camBtnDetail.addActionListener(ev -> showSetImageDialog(productName, mainImgLabel));
+        JPanel camTopRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 4));
+        camTopRight.setOpaque(false);
+        camTopRight.add(camBtnDetail);
+        mainImagePanel.add(camTopRight, BorderLayout.NORTH);
+
+        // Load ảnh lên ảnh chính
+        String detailImgUrl = getImageUrl(productName);
+        if (!detailImgUrl.isEmpty()) {
+            loadImageAsync450(mainImgLabel, detailImgUrl);
+        }
+
+        imageSection.add(mainImagePanel);
         imageSection.add(Box.createRigidArea(new Dimension(0, 10)));
-        
+
+        // ===== THUMBNAILS (4 ảnh nhỏ cùng link) =====
         JPanel thumbsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         thumbsPanel.setBackground(Color.WHITE);
-        for(int i = 0; i < 4; i++) {
-            JPanel thumb = new JPanel();
-            thumb.setBackground(new Color(230, 230, 230));
-            thumb.setPreferredSize(new Dimension(80, 80));
-            thumb.setBorder(new LineBorder(Color.LIGHT_GRAY));
-            thumbsPanel.add(thumb);
+        for (int i = 0; i < 4; i++) {
+            JPanel thumbWrapper = new JPanel(new BorderLayout());
+            thumbWrapper.setBackground(new Color(230, 230, 230));
+            thumbWrapper.setPreferredSize(new Dimension(80, 80));
+            thumbWrapper.setBorder(new LineBorder(Color.LIGHT_GRAY));
+
+            JLabel thumbImg = new JLabel("", SwingConstants.CENTER);
+            thumbWrapper.add(thumbImg, BorderLayout.CENTER);
+
+            if (!detailImgUrl.isEmpty()) {
+                loadImageAsyncThumb(thumbImg, detailImgUrl);
+            }
+            thumbsPanel.add(thumbWrapper);
         }
         imageSection.add(thumbsPanel);
 
@@ -977,24 +1022,494 @@ public class GearVNApp extends JFrame {
         return section;
     }
 
+    // ===== MAP ẢNH SẢN PHẨM =====
+    private static final Map<String, String> PRODUCT_IMAGES = new HashMap<>();
+    private static final Map<String, String> CUSTOM_IMAGES   = new HashMap<>();
+    private static final String IMAGE_PROPS_FILE = "product_images.properties";
+    private static final ExecutorService IMAGE_EXECUTOR = Executors.newFixedThreadPool(3);
+    private static String SOURCE_FILE_PATH = null; // đường dẫn tới GearVNApp.java
+
+    // ===== ĐỌC ẢNH CUSTOM TỪ FILE KHI KHỞI ĐỘNG =====
+    static {
+        Properties props = new Properties();
+        File f = new File(IMAGE_PROPS_FILE);
+        if (f.exists()) {
+            try (FileInputStream fis = new FileInputStream(f)) {
+                props.load(fis);
+                for (String key : props.stringPropertyNames()) {
+                    CUSTOM_IMAGES.put(key, props.getProperty(key));
+                }
+            } catch (IOException ignored) {}
+        }
+    }
+
+    // ===== LƯU ẢNH CUSTOM XUỐNG FILE =====
+    private void saveCustomImages() {
+        Properties props = new Properties();
+        props.putAll(CUSTOM_IMAGES);
+        try (FileOutputStream fos = new FileOutputStream(IMAGE_PROPS_FILE)) {
+            props.store(fos, "GearVN Product Images");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ===== MỞ DIALOG NHẬP LINK ẢNH =====
+    // ===== TÌM FILE NGUỒN GearVNApp.java =====
+    private static String findSourceFile() {
+        if (SOURCE_FILE_PATH != null && new File(SOURCE_FILE_PATH).exists()) return SOURCE_FILE_PATH;
+        // Tìm trong các thư mục phổ biến
+        String[] candidates = {
+            "src/main/java/gearvn/ui/GearVNApp.java",
+            "src/gearvn/ui/GearVNApp.java",
+            "../frontend/src/main/java/gearvn/ui/GearVNApp.java",
+            "GearVNApp.java"
+        };
+        for (String c : candidates) {
+            File f = new File(c);
+            if (f.exists()) return f.getAbsolutePath();
+        }
+        return null;
+    }
+
+    // ===== MÃ HÓA ẢNH FILE → BASE64 =====
+    private static String encodeFileToBase64(File file) {
+        try {
+            BufferedImage orig = ImageIO.read(file);
+            if (orig == null) return null;
+            BufferedImage scaled = new BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2 = scaled.createGraphics();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, 400, 300);
+            // Giữ tỉ lệ
+            double rw = 400.0 / orig.getWidth();
+            double rh = 300.0 / orig.getHeight();
+            double r  = Math.min(rw, rh);
+            int nw = (int)(orig.getWidth() * r);
+            int nh = (int)(orig.getHeight() * r);
+            g2.drawImage(orig, (400-nw)/2, (300-nh)/2, nw, nh, null);
+            g2.dispose();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ImageIO.write(scaled, "jpg", baos);
+            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) { return null; }
+    }
+
+    // ===== TẢI URL VỀ VÀ MÃ HÓA BASE64 =====
+    private static String fetchUrlToBase64(String imageUrl) {
+        try {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new URL(imageUrl).openConnection();
+            conn.setConnectTimeout(6000); conn.setReadTimeout(10000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Referer", "https://www.google.com/");
+            if (conn.getResponseCode() != 200) return null;
+            BufferedImage orig = ImageIO.read(conn.getInputStream());
+            if (orig == null) return null;
+            BufferedImage scaled = new BufferedImage(400, 300, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2 = scaled.createGraphics();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setColor(Color.WHITE);
+            g2.fillRect(0, 0, 400, 300);
+            double r = Math.min(400.0/orig.getWidth(), 300.0/orig.getHeight());
+            int nw = (int)(orig.getWidth()*r), nh = (int)(orig.getHeight()*r);
+            g2.drawImage(orig, (400-nw)/2, (300-nh)/2, nw, nh, null);
+            g2.dispose();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ImageIO.write(scaled, "jpg", baos);
+            return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) { return null; }
+    }
+
+    // ===== GHI BASE64 THẲNG VÀO GearVNApp.java =====
+    private boolean saveImageToSourceCode(String productName, String base64Data) {
+        String path = findSourceFile();
+        if (path == null) return false;
+        try {
+            File srcFile = new File(path);
+            String src = new String(java.nio.file.Files.readAllBytes(srcFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            String startTag = "        // @@IMAGES_START@@";
+            String endTag   = "        // @@IMAGES_END@@";
+            int s = src.indexOf(startTag);
+            int e = src.indexOf(endTag);
+            if (s == -1 || e == -1) return false;
+            // Lấy nội dung hiện tại giữa 2 marker
+            String existing = src.substring(s + startTag.length(), e);
+            // Xóa entry cũ của productName nếu có
+            String safeKey = productName.replace("\\", "\\\\").replace("\"", "\\\"");
+            StringBuilder newLines = new StringBuilder();
+            for (String line : existing.split("\n")) {
+                if (!line.contains("\"" + productName + "\"")) {
+                    newLines.append(line).append("\n");
+                }
+            }
+            // Thêm entry mới
+            newLines.append("        PRODUCT_IMAGES.put(\"").append(safeKey).append("\", \"").append(base64Data).append("\");\n");
+            String updated = src.substring(0, s + startTag.length())
+                           + newLines.toString()
+                           + src.substring(e);
+            java.nio.file.Files.write(srcFile.toPath(), updated.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return true;
+        } catch (Exception ex) { ex.printStackTrace(); return false; }
+    }
+
+    // ===== DECODE BASE64 → ImageIcon =====
+    private ImageIcon decodeBase64Image(String b64, int w, int h) {
+        try {
+            String data = b64.contains(",") ? b64.substring(b64.indexOf(',')+1) : b64;
+            byte[] bytes = Base64.getDecoder().decode(data);
+            BufferedImage img = ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+            if (img != null) return new ImageIcon(img.getScaledInstance(w, h, Image.SCALE_SMOOTH));
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+        private void showSetImageDialog(String productName, JLabel imgLabel) {
+        JDialog dialog = new JDialog(this, "Cập nhật ảnh: " + productName, true);
+        dialog.setSize(580, 240);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout(0, 0));
+
+        // Header đỏ
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        header.setBackground(new Color(227, 28, 37));
+        JLabel headerLbl = new JLabel("📷  " + productName);
+        headerLbl.setForeground(Color.WHITE);
+        headerLbl.setFont(new Font("Arial", Font.BOLD, 13));
+        header.add(headerLbl);
+        dialog.add(header, BorderLayout.NORTH);
+
+        // Form
+        JPanel form = new JPanel(new GridLayout(2, 1, 6, 6));
+        form.setBorder(new EmptyBorder(12, 15, 6, 15));
+
+        // Hàng 1: chọn file từ máy
+        JPanel row1 = new JPanel(new BorderLayout(8, 0));
+        JLabel lbl1 = new JLabel("Từ máy:  ");
+        lbl1.setFont(new Font("Arial", Font.BOLD, 12));
+        JTextField fileNameField = new JTextField("(chưa chọn file)");
+        fileNameField.setEditable(false);
+        fileNameField.setForeground(Color.GRAY);
+        JButton browseBtn = new JButton("📁 Chọn ảnh");
+        browseBtn.setBackground(new Color(52, 73, 94));
+        browseBtn.setForeground(Color.WHITE);
+        browseBtn.setFocusPainted(false);
+        final File[] chosenFile = {null};
+        browseBtn.addActionListener(ev -> {
+            JFileChooser fc = new JFileChooser();
+            fc.setDialogTitle("Chọn ảnh sản phẩm");
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                "Ảnh (PNG, JPG, JPEG, WEBP)", "png","jpg","jpeg","webp"));
+            if (fc.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                chosenFile[0] = fc.getSelectedFile();
+                fileNameField.setText(chosenFile[0].getName());
+                fileNameField.setForeground(Color.BLACK);
+            }
+        });
+        row1.add(lbl1, BorderLayout.WEST);
+        row1.add(fileNameField, BorderLayout.CENTER);
+        row1.add(browseBtn, BorderLayout.EAST);
+
+        // Hàng 2: hoặc URL
+        JPanel row2 = new JPanel(new BorderLayout(8, 0));
+        JLabel lbl2 = new JLabel("Hoặc URL:");
+        lbl2.setFont(new Font("Arial", Font.BOLD, 12));
+        String existing = CUSTOM_IMAGES.getOrDefault(productName, PRODUCT_IMAGES.getOrDefault(productName, ""));
+        boolean hasUrl = !existing.isEmpty() && !existing.startsWith("data:");
+        JTextField urlField = new JTextField(hasUrl ? existing : "https://...");
+        urlField.setForeground(hasUrl ? Color.BLACK : Color.GRAY);
+        urlField.addFocusListener(new FocusAdapter() {
+            public void focusGained(FocusEvent e) {
+                if (urlField.getText().equals("https://...")) { urlField.setText(""); urlField.setForeground(Color.BLACK); }
+            }
+        });
+        row2.add(lbl2, BorderLayout.WEST);
+        row2.add(urlField, BorderLayout.CENTER);
+
+        form.add(row1);
+        form.add(row2);
+        dialog.add(form, BorderLayout.CENTER);
+
+        // Buttons
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
+
+        JButton clearBtn = new JButton("Xóa ảnh");
+        clearBtn.addActionListener(ev -> {
+            CUSTOM_IMAGES.remove(productName);
+            PRODUCT_IMAGES.remove(productName);
+            imgLabel.setIcon(null);
+            imgLabel.setText("Chưa có ảnh");
+            imgLabel.revalidate(); imgLabel.repaint();
+            dialog.dispose();
+        });
+
+        JButton cancelBtn = new JButton("Hủy");
+        cancelBtn.addActionListener(ev -> dialog.dispose());
+
+        JButton saveBtn = new JButton("💾 Nhúng vào code");
+        saveBtn.setBackground(new Color(227, 28, 37));
+        saveBtn.setForeground(Color.WHITE);
+        saveBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        saveBtn.setFocusPainted(false);
+
+        saveBtn.addActionListener(ev -> {
+            // Tìm file nguồn ngay khi bấm lưu
+            String srcPath = findSourceFile();
+            if (srcPath == null) {
+                // Hỏi user chọn file GearVNApp.java
+                JFileChooser jfc = new JFileChooser();
+                jfc.setDialogTitle("Chọn file GearVNApp.java của bạn");
+                jfc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Java files", "java"));
+                if (jfc.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                    SOURCE_FILE_PATH = jfc.getSelectedFile().getAbsolutePath();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "Cần chọn file GearVNApp.java để lưu!");
+                    return;
+                }
+            }
+
+            saveBtn.setText("Đang xử lý...");
+            saveBtn.setEnabled(false);
+            dialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+            new Thread(() -> {
+                String base64 = null;
+
+                // Ưu tiên file từ máy
+                if (chosenFile[0] != null) {
+                    base64 = encodeFileToBase64(chosenFile[0]);
+                }
+                // Fallback: URL
+                if (base64 == null) {
+                    String url = urlField.getText().trim();
+                    if (url.startsWith("http")) {
+                        base64 = fetchUrlToBase64(url);
+                    }
+                }
+
+                final String finalBase64 = base64;
+                SwingUtilities.invokeLater(() -> {
+                    dialog.setCursor(Cursor.getDefaultCursor());
+                    if (finalBase64 == null) {
+                        JOptionPane.showMessageDialog(dialog,
+                            "Không xử lý được ảnh!\nKiểm tra lại file hoặc URL.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                        saveBtn.setText("💾 Nhúng vào code");
+                        saveBtn.setEnabled(true);
+                        return;
+                    }
+
+                    // Lưu vào map để hiển thị ngay
+                    CUSTOM_IMAGES.put(productName, finalBase64);
+                    PRODUCT_IMAGES.put(productName, finalBase64);
+
+                    // Ghi vào GearVNApp.java
+                    boolean saved = saveImageToSourceCode(productName, finalBase64);
+
+                    // Cập nhật ảnh hiển thị
+                    IMAGE_EXECUTOR.submit(() -> {
+                        int w = (imgLabel.getPreferredSize() != null && imgLabel.getPreferredSize().width > 200) ? 450 : 200;
+                        int h = w > 200 ? 350 : 150;
+                        ImageIcon icon = decodeBase64Image(finalBase64, w, h);
+                        SwingUtilities.invokeLater(() -> {
+                            if (icon != null) { imgLabel.setIcon(icon); imgLabel.setText(""); }
+                            imgLabel.revalidate(); imgLabel.repaint();
+                        });
+                    });
+
+                    String msg = saved
+                        ? "✅ Đã nhúng ảnh vào GearVNApp.java!\nShare file này là người khác thấy ảnh ngay."
+                        : "✅ Ảnh hiển thị được.\n⚠️ Chưa ghi vào source code (cần recompile).\nHãy chọn lại file GearVNApp.java lần sau.";
+                    JOptionPane.showMessageDialog(dialog, msg, "Hoàn thành", JOptionPane.INFORMATION_MESSAGE);
+                    dialog.dispose();
+                });
+            }).start();
+        });
+
+        btns.add(clearBtn);
+        btns.add(cancelBtn);
+        btns.add(saveBtn);
+        dialog.add(btns, BorderLayout.SOUTH);
+        dialog.setVisible(true);
+    }
+    static {
+        // LAPTOP
+        PRODUCT_IMAGES.put("Laptop ASUS ROG Strix G15",    "https://dlcdnwebimgs.asus.com/gain/6A2ACDBD-DD00-4F52-97CA-14AC0462BF88/w800");
+        PRODUCT_IMAGES.put("Laptop ASUS ROG Zephyrus G14", "https://dlcdnwebimgs.asus.com/gain/3A3B74A8-D4E8-4BB1-A935-E5C793A78C0D/w800");
+        PRODUCT_IMAGES.put("Laptop MSI Katana 15",          "https://asset.msi.com/resize/image/global/product/product_1_20220722183528_62daa120c67b5.png62405b38c58fe0f07fcef2367d8a9ba1/600.png");
+        PRODUCT_IMAGES.put("Laptop Acer Nitro 5",           "https://images.acer.com/is/image/acer/acer-nitro5-wallpaper-feature?$Product-Cards-XL$");
+        PRODUCT_IMAGES.put("Laptop Lenovo Legion 5",        "https://p1-ofp.static.pub/fes/cms/2022/07/13/qlqo2yru3vwhljymfywtmbecyb6zmh622804.png");
+        PRODUCT_IMAGES.put("Laptop ASUS TUF Gaming F15",   "https://dlcdnwebimgs.asus.com/gain/5C3ABDC5-6B1A-4A27-B5CF-1DE9EC8BF2CC/w800");
+        // CHUỘT
+        PRODUCT_IMAGES.put("Chuột Razer DeathAdder Essential", "https://assets2.razerzone.com/images/pnx.assets/cc4b5e04-b30e-499c-857a-a6e03cb5148b/razer-deathadder-essential-gallery-4.jpg");
+        PRODUCT_IMAGES.put("Chuột Razer Basilisk Ultimate",    "https://assets2.razerzone.com/images/pnx.assets/a80d7f3b-0834-4cc1-9df0-5e8d19a42898/razer-basilisk-ultimate-gallery-2.jpg");
+        PRODUCT_IMAGES.put("Chuột Logitech G102",              "https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/g102-lightsync/gallery/g102-lightsync-mouse-top-view-black.png");
+        PRODUCT_IMAGES.put("Chuột Logitech G Pro X Superlight","https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/mice/pro-x-superlight-2/gallery/pro-x-superlight2-mouse-top-view-white.png");
+        PRODUCT_IMAGES.put("Chuột Corsair M65 RGB Elite",     "https://www.corsair.com/medias/sys_master/images/images/h38/hb1/9057255039006.png");
+        PRODUCT_IMAGES.put("Chuột SteelSeries Rival 3",       "https://steelseries.com/static/img/rival-3/rival-3-primary-black.png");
+        // BÀN PHÍM
+        PRODUCT_IMAGES.put("Bàn phím cơ AULA F75",       "https://salt.tikicdn.com/cache/750x750/ts/product/3d/e8/d2/54b3b1a4de8ad28ab0c8c5bf72bda03a.jpg");
+        PRODUCT_IMAGES.put("Bàn phím AKKO 3098",          "https://salt.tikicdn.com/cache/750x750/ts/product/49/4d/da/93d3de9f87c0fb64a7a5e0b94c0f9fd6.jpg");
+        PRODUCT_IMAGES.put("Bàn phím Corsair K70 RGB",   "https://www.corsair.com/medias/sys_master/images/images/hd6/h1c/8843001659422.png");
+        PRODUCT_IMAGES.put("Bàn phím Logitech G Pro X",  "https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/keyboards/g-pro-x-keyboard/gallery/g-pro-x-keyboard-gallery-1-black.png");
+        PRODUCT_IMAGES.put("Bàn phím Razer BlackWidow V3","https://assets2.razerzone.com/images/pnx.assets/b1f02f96-2d5a-4c97-8ea5-f8296ab487c5/razer-blackwidow-v3-gallery-1.jpg");
+        PRODUCT_IMAGES.put("Bàn phím DareU EK87",        "https://salt.tikicdn.com/cache/750x750/ts/product/a5/5f/f8/94ea71e64b0e29a64a9e9440a2b34f4c.jpg");
+        // TAI NGHE
+        PRODUCT_IMAGES.put("Tai nghe Razer Barracuda X",    "https://assets2.razerzone.com/images/pnx.assets/4e2b2d04-ef09-481b-abf2-e4ace8b7cde0/razer-barracuda-x-gallery-1.jpg");
+        PRODUCT_IMAGES.put("Tai nghe HyperX Cloud II",      "https://media.kingston.com/hyperx/product/hx-product-headset-cloud-ii-black-1-zm-lg.jpg");
+        PRODUCT_IMAGES.put("Tai nghe Logitech G733",        "https://resource.logitech.com/w_386,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/gaming-headsets/g733/gallery/g733-headset-gallery-white-top.png");
+        PRODUCT_IMAGES.put("Tai nghe Corsair HS80 RGB",     "https://www.corsair.com/medias/sys_master/images/images/h04/hb5/9057254940702.png");
+        PRODUCT_IMAGES.put("Tai nghe SteelSeries Arctis 5", "https://steelseries.com/static/img/arctis-5/arctis-5-black.png");
+        PRODUCT_IMAGES.put("Tai nghe ASUS TUF H3",          "https://dlcdnwebimgs.asus.com/gain/9c4c2a50-a3de-4b5a-9a02-f0cc44f01c10/w800");
+        // MÀN HÌNH
+        PRODUCT_IMAGES.put("Màn hình ASUS TUF 24 inch 144Hz", "https://dlcdnwebimgs.asus.com/gain/42F1B5B1-4D45-4B2A-A9C0-2AFD4FF3B55E/w800");
+        PRODUCT_IMAGES.put("Màn hình MSI 27 inch 165Hz",      "https://asset.msi.com/resize/image/global/product/product_1_20220407134524_6250050ccc37d.png62405b38c58fe0f07fcef2367d8a9ba1/600.png");
+        PRODUCT_IMAGES.put("Màn hình LG UltraGear 27GL850",   "https://www.lg.com/us/images/monitors/md07534540/gallery/desktop-01.jpg");
+        PRODUCT_IMAGES.put("Màn hình Samsung Odyssey G5",     "https://image-us.samsung.com/SamsungUS/home/computing/monitors/gaming/06122020/LC27G55TQWNXZA_001_Front_Black.jpg");
+        // PC PART
+        PRODUCT_IMAGES.put("CPU Intel Core i5 13400F", "https://www.intel.com/content/dam/www/central-libraries/us/en/images/2022-11/processors-core-i5-13th-gen-badge-rwd.png");
+        PRODUCT_IMAGES.put("CPU AMD Ryzen 5 5600X",    "https://www.amd.com/system/files/2020-10/616607-amd-ryzen-5-5600x-pib-left-facing-1260x709_0.png");
+        PRODUCT_IMAGES.put("GPU RTX 4060",             "https://www.nvidia.com/content/nvidiaGDC/us/en_US/geforce/graphics-cards/40-series/rtx-4060/_jcr_content/root/responsivegrid/nv_container_392921705/container/nv_image.coreimg.100.1070.png/1687463798289/rtx4060-product-photo-001-v2.png");
+        PRODUCT_IMAGES.put("GPU RTX 4070",             "https://www.nvidia.com/content/nvidiaGDC/us/en_US/geforce/graphics-cards/40-series/rtx-4070/_jcr_content/root/responsivegrid/nv_container_392921705/container/nv_image.coreimg.100.1070.png/1680633402585/rtx4070-product-photo-001.png");
+        PRODUCT_IMAGES.put("RAM Corsair 16GB DDR4",    "https://www.corsair.com/medias/sys_master/images/images/hf5/hcc/8803049947166.png");
+        PRODUCT_IMAGES.put("SSD Samsung 980 1TB",      "https://image-us.samsung.com/SamsungUS/home/computing/memory-storage/solid-state-drives/10012021/MZ-V8V1T0B_001_Front_Black.jpg");
+        // @@IMAGES_START@@
+        // @@IMAGES_END@@
+    }
+
+    // ===== LẤY URL ẢNH THEO TÊN SẢN PHẨM =====
+    private String getImageUrl(String name) {
+        // Ưu tiên ảnh custom do người dùng nhập
+        String baseName = name.split(" V")[0].split(" Phiên bản")[0].trim();
+        if (CUSTOM_IMAGES.containsKey(name)) return CUSTOM_IMAGES.get(name);
+        if (CUSTOM_IMAGES.containsKey(baseName)) return CUSTOM_IMAGES.get(baseName);
+        // Tìm chính xác trong map mặc định
+        for (Map.Entry<String, String> entry : PRODUCT_IMAGES.entrySet()) {
+            if (name.toLowerCase().contains(entry.getKey().toLowerCase()) ||
+                entry.getKey().toLowerCase().contains(baseName.toLowerCase())) {
+                return entry.getValue();
+            }
+        }
+        // Fallback theo danh mục
+        String lower = name.toLowerCase();
+        int seed = Math.abs(name.hashCode() % 1000);
+        if (lower.contains("laptop"))           return "https://picsum.photos/seed/laptop" + seed + "/200/150";
+        if (lower.contains("chuột"))            return "https://picsum.photos/seed/mouse" + seed + "/200/150";
+        if (lower.contains("bàn phím"))         return "https://picsum.photos/seed/keyboard" + seed + "/200/150";
+        if (lower.contains("tai nghe"))         return "https://picsum.photos/seed/headset" + seed + "/200/150";
+        if (lower.contains("màn hình"))         return "https://picsum.photos/seed/monitor" + seed + "/200/150";
+        if (lower.contains("cpu") || lower.contains("gpu") || 
+            lower.contains("ram") || lower.contains("ssd")) return "https://picsum.photos/seed/pcpart" + seed + "/200/150";
+        return "https://picsum.photos/seed/" + seed + "/200/150";
+    }
+
+    // ===== LOAD ẢNH (base64 hoặc URL) =====
+    private void loadImageAsyncSized(JLabel imgLabel, String data, int w, int h) {
+        if (data == null || data.isEmpty()) return;
+        if (data.startsWith("data:")) {
+            // Base64: hiển thị không cần internet
+            IMAGE_EXECUTOR.submit(() -> {
+                ImageIcon icon = decodeBase64Image(data, w, h);
+                SwingUtilities.invokeLater(() -> {
+                    if (icon != null) { imgLabel.setIcon(icon); imgLabel.setText(""); }
+                    else imgLabel.setText("Lỗi ảnh");
+                    imgLabel.revalidate(); imgLabel.repaint();
+                });
+            });
+        } else {
+            // URL: tải từ internet
+            String directUrl = convertToDirectUrl(data);
+            IMAGE_EXECUTOR.submit(() -> {
+                ImageIcon icon = null;
+                try {
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new URL(directUrl).openConnection();
+                    conn.setConnectTimeout(3000); conn.setReadTimeout(5000);
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    conn.setRequestProperty("Referer", "https://www.google.com/");
+                    if (conn.getResponseCode() == 200) {
+                        BufferedImage img = ImageIO.read(conn.getInputStream());
+                        if (img != null) icon = new ImageIcon(img.getScaledInstance(w, h, Image.SCALE_SMOOTH));
+                    }
+                } catch (Exception ignored) {}
+                final ImageIcon fi = icon;
+                SwingUtilities.invokeLater(() -> {
+                    if (fi != null) { imgLabel.setIcon(fi); imgLabel.setText(""); }
+                    else imgLabel.setText("Không tải được");
+                    imgLabel.revalidate(); imgLabel.repaint();
+                });
+            });
+        }
+    }
+
+    private String convertToDirectUrl(String data) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void loadImageAsync(JLabel imgLabel, String imageUrl) {
+        loadImageAsyncSized(imgLabel, imageUrl, 200, 150);
+    }
+
+    private void loadImageAsync450(JLabel imgLabel, String imageUrl) {
+        loadImageAsyncSized(imgLabel, imageUrl, 450, 350);
+    }
+
+    private void loadImageAsyncThumb(JLabel imgLabel, String imageUrl) {
+        loadImageAsyncSized(imgLabel, imageUrl, 80, 80);
+    }
+
     private JPanel createProductCard(String name, String price) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
         card.setBorder(new LineBorder(new Color(220, 220, 220)));
         card.setPreferredSize(new Dimension(200, 280));
-        card.setCursor(new Cursor(Cursor.HAND_CURSOR)); 
+        card.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         card.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { 
-                showProductDetail(name, price); 
+            public void mouseClicked(MouseEvent e) {
+                showProductDetail(name, price);
             }
         });
 
-        JPanel imageMock = new JPanel();
-        imageMock.setBackground(new Color(230, 230, 230));
-        imageMock.setPreferredSize(new Dimension(200, 150));
-        imageMock.setMaximumSize(new Dimension(300, 150));
+        // Panel chứa ảnh + nút 📷
+        JPanel imageWrapper = new JPanel(new BorderLayout());
+        imageWrapper.setBackground(new Color(240, 240, 240));
+        imageWrapper.setPreferredSize(new Dimension(200, 150));
+        imageWrapper.setMaximumSize(new Dimension(300, 150));
+
+        JLabel imgLabel = new JLabel("Chưa có ảnh", SwingConstants.CENTER);
+        imgLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+        imgLabel.setForeground(new Color(150, 150, 150));
+        imageWrapper.add(imgLabel, BorderLayout.CENTER);
+
+        // Nút 📷 góc trên phải
+        JButton camBtn = new JButton("📷");
+        camBtn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        camBtn.setPreferredSize(new Dimension(32, 24));
+        camBtn.setMargin(new Insets(0, 0, 0, 0));
+        camBtn.setFocusPainted(false);
+        camBtn.setBackground(new Color(255, 255, 255, 200));
+        camBtn.setBorder(new LineBorder(new Color(200, 200, 200)));
+        camBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        camBtn.setToolTipText("Nhập link ảnh cho sản phẩm này");
+        camBtn.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                e.consume(); // không trigger click card
+                showSetImageDialog(name, imgLabel);
+            }
+        });
+
+        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 2, 2));
+        topRight.setOpaque(false);
+        topRight.add(camBtn);
+        imageWrapper.add(topRight, BorderLayout.NORTH);
+
+        // Load ảnh ban đầu
+        String initUrl = getImageUrl(name);
+        if (!initUrl.isEmpty()) {
+            imgLabel.setText("Đang tải...");
+            loadImageAsync(imgLabel, initUrl);
+        }
 
         JTextArea nameLabel = new JTextArea(name);
         nameLabel.setWrapStyleWord(true);
@@ -1010,7 +1525,7 @@ public class GearVNApp extends JFrame {
         priceLabel.setForeground(new Color(227, 28, 37));
         priceLabel.setBorder(new EmptyBorder(0, 10, 15, 10));
 
-        card.add(imageMock);
+        card.add(imageWrapper);
         card.add(nameLabel);
         card.add(Box.createVerticalGlue());
         card.add(priceLabel);
@@ -1081,11 +1596,11 @@ public class GearVNApp extends JFrame {
             String email = emailField.getText().trim();
             String pass  = String.valueOf(passField.getPassword()).trim();
 
-            if (email.isEmpty() || email.equals("E-mail") 
-            	    || pass.isEmpty() || pass.equals("Password")) {
-            	    JOptionPane.showMessageDialog(this, "Nhập email và password");
-            	    return;
-            	}
+            if (email.isEmpty() || email.equals("E-mail") ||
+                pass.isEmpty() || pass.equals("Password")) {
+                JOptionPane.showMessageDialog(this, "Nhập email và password");
+                return;
+            }
 
             String json = String.format(
                 "{\"email\":\"%s\",\"password\":\"%s\"}",
@@ -1183,16 +1698,20 @@ public class GearVNApp extends JFrame {
             String ten   = tenField.getText().trim();
             String pass  = String.valueOf(passField.getPassword()).trim();
 
-            // Loại bỏ placeholder chưa được xóa
-            if (email.equals("E-mail") || ho.equals("Họ") || ten.equals("Tên")
-                    || pass.equals("Mật khẩu") || email.isEmpty() || pass.isEmpty()) {
+            if (email.equals("E-mail") || email.isEmpty() ||
+                ho.equals("Họ") || ho.isEmpty() ||
+                ten.equals("Tên") || ten.isEmpty() ||
+                pass.equals("Mật khẩu") || pass.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin");
                 return;
             }
 
             String json = String.format(
                 "{\"email\":\"%s\",\"name\":\"%s %s\",\"password\":\"%s\"}",
-                email, ho, ten, pass
+                email.replace("\"", ""),
+                ho.replace("\"", ""),
+                ten.replace("\"", ""),
+                pass.replace("\"", "")
             );
 
             new Thread(() -> {
@@ -1207,6 +1726,7 @@ public class GearVNApp extends JFrame {
                 });
             }).start();
         });
+
         JLabel orLabel = new JLabel("hoặc đăng ký bằng");
         orLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         orLabel.setForeground(Color.GRAY);
