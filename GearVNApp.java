@@ -6,7 +6,9 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.imageio.ImageIO;
 import java.io.*;
@@ -16,6 +18,10 @@ public class GearVNApp extends JFrame {
 
     private CardLayout cardLayout;
     private JPanel mainContentPanel;
+
+    // Danh sách sản phẩm trong giỏ hàng: mỗi phần tử là {tên, giá, số lượng}
+    private List<String[]> cartItems = new ArrayList<>();
+    private JButton cartBtn; // tham chiếu để cập nhật badge số lượng
 
     public GearVNApp() {
         setTitle("GearVN - App Mua Sắm (All in One)");
@@ -112,13 +118,16 @@ public class GearVNApp extends JFrame {
         customerBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         customerBtn.addActionListener(e -> cardLayout.show(mainContentPanel, "CUSTOMER"));
 
-        JButton cartBtn = new JButton("🛒 Giỏ hàng");
+        cartBtn = new JButton("🛒 Giỏ hàng (0)");
         cartBtn.setBackground(Color.WHITE);
         cartBtn.setForeground(new Color(227, 28, 37));
         cartBtn.setFocusPainted(false);
         cartBtn.setFont(new Font("Arial", Font.BOLD, 13));
         cartBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        cartBtn.addActionListener(e -> cardLayout.show(mainContentPanel, "CART"));
+        cartBtn.addActionListener(e -> {
+            refreshCartPanel();
+            cardLayout.show(mainContentPanel, "CART");
+        });
 
         JButton adminBtn = new JButton("⚙ Admin");
         adminBtn.setBackground(new Color(40, 40, 40));
@@ -150,11 +159,10 @@ public class GearVNApp extends JFrame {
         mainContentPanel.add(createForgotPasswordPanel(), "FORGOT_PASS");
         mainContentPanel.add(createCustomerPanel(), "CUSTOMER");
         
-        // Trang giỏ hàng mặc định (Trống)
-        JPanel emptyCart = new JPanel(new BorderLayout());
-        emptyCart.add(new JLabel("Giỏ hàng đang trống", SwingConstants.CENTER));
-        emptyCart.setName("CART");
-        mainContentPanel.add(emptyCart, "CART");
+        // Trang giỏ hàng ban đầu (trống, sẽ được refresh khi thêm sản phẩm)
+        JPanel initialCart = buildCartPanel();
+        initialCart.setName("CART");
+        mainContentPanel.add(initialCart, "CART");
 
         // Nạp các trang Danh sách sản phẩm
         mainContentPanel.add(createProductListPanel("Laptop Gaming", 
@@ -203,32 +211,63 @@ public class GearVNApp extends JFrame {
     }
 
     private void addToCartAndShow(String productName, String productPrice) {
-        // Xóa giỏ hàng cũ để cập nhật mới
+        // Gọi API backend (chạy bất đồng bộ)
         new Thread(() -> {
             String json = "{ \"productName\":\"" + productName + "\", \"price\":\"" + productPrice + "\" }";
             ApiClient.post("/api/cart/add", json);
         }).start();
+
+        // Kiểm tra sản phẩm đã có trong giỏ chưa → tăng số lượng
+        boolean found = false;
+        for (String[] item : cartItems) {
+            if (item[0].equals(productName)) {
+                item[2] = String.valueOf(Integer.parseInt(item[2]) + 1);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            cartItems.add(new String[]{productName, productPrice, "1"});
+        }
+
+        // Cập nhật badge số lượng trên nút giỏ hàng header
+        updateCartBadge();
+
+        // Render lại giỏ hàng và chuyển trang
+        refreshCartPanel();
+        cardLayout.show(mainContentPanel, "CART");
+    }
+
+    /** Cập nhật text nút Giỏ hàng trên header với tổng số lượng */
+    private void updateCartBadge() {
+        int total = cartItems.stream().mapToInt(it -> Integer.parseInt(it[2])).sum();
+        if (cartBtn != null) {
+            cartBtn.setText("🛒 Giỏ hàng (" + total + ")");
+        }
+    }
+
+    /** Xóa và tạo lại panel CART từ danh sách cartItems hiện tại */
+    private void refreshCartPanel() {
         for (Component c : mainContentPanel.getComponents()) {
             if ("CART".equals(c.getName())) {
                 mainContentPanel.remove(c);
                 break;
             }
         }
-        
-        // Tạo giỏ hàng có sản phẩm vừa chọn
-        JPanel cartPanel = createCartPanel(productName, productPrice);
+        JPanel cartPanel = buildCartPanel();
         cartPanel.setName("CART");
         mainContentPanel.add(cartPanel, "CART");
-        cardLayout.show(mainContentPanel, "CART");
+        mainContentPanel.revalidate();
+        mainContentPanel.repaint();
     }
 
     // =========================================================================
-    // MÀN HÌNH GIỎ HÀNG
+    // MÀN HÌNH GIỎ HÀNG (hỗ trợ nhiều sản phẩm)
     // =========================================================================
-    private JPanel createCartPanel(String productName, String productPrice) {
+    private JPanel buildCartPanel() {
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.setBackground(new Color(244, 244, 244));
-        
+
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(new Color(244, 244, 244));
@@ -240,106 +279,185 @@ public class GearVNApp extends JFrame {
         backLabel.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) { cardLayout.show(mainContentPanel, "HOME"); }
         });
-        backLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        
         JPanel backPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         backPanel.setBackground(new Color(244, 244, 244));
-        backPanel.setMaximumSize(new Dimension(800, 40));
+        backPanel.setMaximumSize(new Dimension(900, 40));
         backPanel.add(backLabel);
         contentPanel.add(backPanel);
         contentPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // --- Hộp giỏ hàng (Cart Box) ---
+        // Nếu giỏ trống
+        if (cartItems.isEmpty()) {
+            JPanel emptyBox = new JPanel(new BorderLayout());
+            emptyBox.setBackground(Color.WHITE);
+            emptyBox.setMaximumSize(new Dimension(900, 200));
+            emptyBox.setBorder(new LineBorder(new Color(220, 220, 220), 1, true));
+            JLabel emptyLbl = new JLabel("🛒  Giỏ hàng của bạn đang trống", SwingConstants.CENTER);
+            emptyLbl.setFont(new Font("Arial", Font.PLAIN, 18));
+            emptyLbl.setForeground(Color.GRAY);
+            emptyBox.add(emptyLbl, BorderLayout.CENTER);
+            contentPanel.add(emptyBox);
+            JScrollPane sp = new JScrollPane(contentPanel);
+            sp.setBorder(null);
+            wrapperPanel.add(sp, BorderLayout.CENTER);
+            return wrapperPanel;
+        }
+
+        // --- Hộp giỏ hàng ---
         JPanel cartBox = new JPanel();
         cartBox.setLayout(new BoxLayout(cartBox, BoxLayout.Y_AXIS));
         cartBox.setBackground(Color.WHITE);
-        cartBox.setMaximumSize(new Dimension(800, 400));
+        cartBox.setMaximumSize(new Dimension(900, Integer.MAX_VALUE));
         cartBox.setBorder(new LineBorder(new Color(220, 220, 220), 1, true));
+
+        // Tính tổng tiền
+        long[] totalRef = {computeTotal()};
 
         // Header tổng tiền
         JPanel totalHeader = new JPanel(new BorderLayout());
-        totalHeader.setBackground(new Color(255, 240, 242)); // Màu hồng nhạt
+        totalHeader.setBackground(new Color(255, 240, 242));
         totalHeader.setBorder(new EmptyBorder(15, 20, 15, 20));
-        
-        JLabel totalText = new JLabel("Tổng tiền:");
+        JLabel totalText = new JLabel("Tổng tiền (" + cartItems.stream().mapToInt(it -> Integer.parseInt(it[2])).sum() + " sản phẩm):");
         totalText.setFont(new Font("Arial", Font.BOLD, 18));
-        JLabel totalPriceLabel = new JLabel(productPrice);
+        JLabel totalPriceLabel = new JLabel(formatPrice(totalRef[0]));
         totalPriceLabel.setFont(new Font("Arial", Font.BOLD, 22));
         totalPriceLabel.setForeground(new Color(227, 28, 37));
-        
         totalHeader.add(totalText, BorderLayout.WEST);
         totalHeader.add(totalPriceLabel, BorderLayout.EAST);
         cartBox.add(totalHeader);
+        cartBox.add(new JSeparator());
 
-        // Sản phẩm (Item Row)
-        JPanel itemRow = new JPanel(new GridBagLayout());
-        itemRow.setBackground(Color.WHITE);
-        itemRow.setBorder(new EmptyBorder(20, 20, 20, 20));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(0, 10, 0, 10);
-        
-        // Cột 1: Ảnh
-        JPanel imgMock = new JPanel(new BorderLayout());
-        imgMock.setPreferredSize(new Dimension(100, 80));
-        imgMock.setBackground(new Color(230, 230, 230));
-        imgMock.add(new JLabel("Image", SwingConstants.CENTER), BorderLayout.CENTER);
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.0;
-        itemRow.add(imgMock, gbc);
+        // Render từng sản phẩm trong giỏ
+        for (int idx = 0; idx < cartItems.size(); idx++) {
+            final int i = idx;
+            String[] item = cartItems.get(i);
+            final String iName  = item[0];
+            final String iPrice = item[1];
+            final int[]  iQty   = {Integer.parseInt(item[2])};
 
-        // Cột 2: Tên sản phẩm
-        JLabel nameLabel = new JLabel("<html><div style='width: 200px; font-weight:bold;'>" + productName + "</div></html>");
-        nameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        gbc.gridx = 1; gbc.weightx = 0.5;
-        itemRow.add(nameLabel, gbc);
+            JPanel itemRow = new JPanel(new GridBagLayout());
+            itemRow.setBackground(Color.WHITE);
+            itemRow.setBorder(new EmptyBorder(15, 20, 15, 20));
+            itemRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.insets = new Insets(0, 8, 0, 8);
+            gbc.anchor = GridBagConstraints.CENTER;
 
-        // Cột 3: Giá
-        JPanel pricePanel = new JPanel();
-        pricePanel.setLayout(new BoxLayout(pricePanel, BoxLayout.Y_AXIS));
-        pricePanel.setBackground(Color.WHITE);
-        JLabel pLbl = new JLabel(productPrice);
-        pLbl.setFont(new Font("Arial", Font.BOLD, 16));
-        pLbl.setForeground(new Color(227, 28, 37));
-        JLabel oldPLbl = new JLabel("<html><strike>33.090.000đ</strike></html>");
-        oldPLbl.setForeground(Color.GRAY);
-        pricePanel.add(pLbl);
-        pricePanel.add(oldPLbl);
-        gbc.gridx = 2; gbc.weightx = 0.2;
-        itemRow.add(pricePanel, gbc);
+            // Cột 1: Ảnh giả
+            JPanel imgMock = new JPanel(new BorderLayout());
+            imgMock.setPreferredSize(new Dimension(90, 75));
+            imgMock.setBackground(new Color(230, 230, 230));
+            imgMock.add(new JLabel("IMG", SwingConstants.CENTER), BorderLayout.CENTER);
+            gbc.gridx = 0; gbc.weightx = 0;
+            itemRow.add(imgMock, gbc);
 
-        // Cột 4: Số lượng & Nút Xóa
-        JPanel actionPanel = new JPanel(new BorderLayout());
-        actionPanel.setBackground(Color.WHITE);
-        JLabel deleteBtn = new JLabel("<html><b>X</b></html>");
-        deleteBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        deleteBtn.setHorizontalAlignment(SwingConstants.RIGHT);
-        
-        JPanel qtyPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        qtyPanel.setBackground(Color.WHITE);
-        qtyPanel.add(new JButton("-"));
-        qtyPanel.add(new JLabel(" 1 "));
-        qtyPanel.add(new JButton("+"));
-        
-        actionPanel.add(deleteBtn, BorderLayout.NORTH);
-        actionPanel.add(qtyPanel, BorderLayout.SOUTH);
-        gbc.gridx = 3; gbc.weightx = 0.1;
-        itemRow.add(actionPanel, gbc);
+            // Cột 2: Tên sản phẩm
+            JLabel nameLabel = new JLabel("<html><div style='width:230px; font-weight:bold;'>" + iName + "</div></html>");
+            nameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            gbc.gridx = 1; gbc.weightx = 0.45;
+            itemRow.add(nameLabel, gbc);
 
-        cartBox.add(itemRow);
+            // Cột 3: Giá từng sản phẩm
+            JLabel priceLabel = new JLabel(iPrice);
+            priceLabel.setFont(new Font("Arial", Font.BOLD, 15));
+            priceLabel.setForeground(new Color(227, 28, 37));
+            gbc.gridx = 2; gbc.weightx = 0.2;
+            itemRow.add(priceLabel, gbc);
+
+            // Cột 4: Điều chỉnh số lượng & Nút Xóa
+            JPanel actionPanel = new JPanel(new BorderLayout(0, 6));
+            actionPanel.setBackground(Color.WHITE);
+
+            // Nút Xóa
+            JButton deleteBtn = new JButton("✕ Xóa");
+            deleteBtn.setFont(new Font("Arial", Font.PLAIN, 11));
+            deleteBtn.setForeground(Color.GRAY);
+            deleteBtn.setBackground(Color.WHITE);
+            deleteBtn.setFocusPainted(false);
+            deleteBtn.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+            deleteBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            deleteBtn.addActionListener(ev -> {
+                cartItems.remove(i);
+                updateCartBadge();
+                refreshCartPanel();
+                cardLayout.show(mainContentPanel, "CART");
+            });
+
+            // Bộ điều chỉnh số lượng
+            JLabel qtyLabel = new JLabel(String.valueOf(iQty[0]), SwingConstants.CENTER);
+            qtyLabel.setFont(new Font("Arial", Font.BOLD, 14));
+            qtyLabel.setPreferredSize(new Dimension(36, 28));
+
+            JButton minusBtn = new JButton("-");
+            minusBtn.setFont(new Font("Arial", Font.BOLD, 14));
+            minusBtn.setFocusPainted(false);
+            minusBtn.setPreferredSize(new Dimension(32, 28));
+            minusBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            minusBtn.addActionListener(ev -> {
+                if (iQty[0] > 1) {
+                    iQty[0]--;
+                    cartItems.get(i)[2] = String.valueOf(iQty[0]);
+                    updateCartBadge();
+                    refreshCartPanel();
+                    cardLayout.show(mainContentPanel, "CART");
+                }
+            });
+
+            JButton plusBtn = new JButton("+");
+            plusBtn.setFont(new Font("Arial", Font.BOLD, 14));
+            plusBtn.setFocusPainted(false);
+            plusBtn.setPreferredSize(new Dimension(32, 28));
+            plusBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            plusBtn.addActionListener(ev -> {
+                iQty[0]++;
+                cartItems.get(i)[2] = String.valueOf(iQty[0]);
+                updateCartBadge();
+                refreshCartPanel();
+                cardLayout.show(mainContentPanel, "CART");
+            });
+
+            JPanel qtyPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 3, 0));
+            qtyPanel.setBackground(Color.WHITE);
+            qtyPanel.add(minusBtn);
+            qtyPanel.add(qtyLabel);
+            qtyPanel.add(plusBtn);
+
+            actionPanel.add(deleteBtn, BorderLayout.NORTH);
+            actionPanel.add(qtyPanel, BorderLayout.SOUTH);
+            gbc.gridx = 3; gbc.weightx = 0.15;
+            itemRow.add(actionPanel, gbc);
+
+            cartBox.add(itemRow);
+
+            // Đường phân cách giữa các sản phẩm
+            if (i < cartItems.size() - 1) {
+                JSeparator sep = new JSeparator();
+                sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                cartBox.add(sep);
+            }
+        }
 
         // Nút Đặt hàng ngay
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         footerPanel.setBackground(Color.WHITE);
-        footerPanel.setBorder(new EmptyBorder(20, 0, 30, 0));
-        
-        JButton checkoutBtn = new JButton("ĐẶT HÀNG NGAY");
+        footerPanel.setBorder(new EmptyBorder(20, 0, 20, 0));
+        JButton checkoutBtn = new JButton("ĐẶT HÀNG NGAY  →  " + formatPrice(totalRef[0]));
         checkoutBtn.setBackground(new Color(227, 28, 37));
         checkoutBtn.setForeground(Color.WHITE);
-        checkoutBtn.setFont(new Font("Arial", Font.BOLD, 18));
-        checkoutBtn.setPreferredSize(new Dimension(350, 50));
+        checkoutBtn.setFont(new Font("Arial", Font.BOLD, 17));
+        checkoutBtn.setPreferredSize(new Dimension(420, 52));
         checkoutBtn.setFocusPainted(false);
         checkoutBtn.setBorder(new RoundedBorder(8, new Color(227, 28, 37)));
-        
+        checkoutBtn.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this,
+                "Đặt hàng thành công!\nTổng tiền: " + formatPrice(computeTotal()),
+                "Xác nhận đơn hàng", JOptionPane.INFORMATION_MESSAGE);
+            cartItems.clear();
+            updateCartBadge();
+            refreshCartPanel();
+            cardLayout.show(mainContentPanel, "HOME");
+        });
         footerPanel.add(checkoutBtn);
         cartBox.add(footerPanel);
 
@@ -347,11 +465,34 @@ public class GearVNApp extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         wrapperPanel.add(scrollPane, BorderLayout.CENTER);
-
         return wrapperPanel;
     }
 
+    /** Tính tổng tiền từ danh sách cartItems (bỏ ký tự không phải số) */
+    private long computeTotal() {
+        long total = 0;
+        for (String[] item : cartItems) {
+            try {
+                long price = Long.parseLong(item[1].replaceAll("[^0-9]", ""));
+                int qty = Integer.parseInt(item[2]);
+                total += price * qty;
+            } catch (NumberFormatException ignored) {}
+        }
+        return total;
+    }
+
+    /** Định dạng số thành chuỗi tiền tệ VND */
+    private String formatPrice(long amount) {
+        return String.format("%,d", amount).replace(',', '.') + "đ";
+    }
+
+    // Giữ lại createCartPanel cũ (không dùng) để tránh lỗi biên dịch nếu còn tham chiếu
+    @SuppressWarnings("unused")
+    private JPanel createCartPanel(String productName, String productPrice) {
+        return buildCartPanel();
+    }
 
     // =========================================================================
     // 1. MÀN HÌNH TRANG CHỦ
