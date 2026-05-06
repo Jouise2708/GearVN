@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearVN - Gaming Gear E-Commerce</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #e31c25;
+    --red-dark: #b5141b;
+    --dark: #0f1117;
+    --card: #1a1f2e;
+    --card2: #222840;
+    --border: #2a3150;
+    --text: #f0f2f8;
+    --dim: #8892b0;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --amber: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--red);
+    padding: 0 32px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px #0008;
+  }
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .search-bar {
+    flex: 1;
+    max-width: 480px;
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    padding: 10px 14px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    background: rgba(255,255,255,0.92);
+    color: #222;
+    outline: none;
+  }
+  .search-bar button {
+    background: var(--red-dark);
+    border: none;
+    color: #fff;
+    padding: 0 18px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .header-btns { display: flex; gap: 8px; margin-left: auto; }
+  .header-btns button {
+    background: #fff;
+    color: var(--red);
+    border: none;
+    padding: 7px 14px;
+    border-radius: 5px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .header-btns button:hover { opacity: .85; }
+  .header-btns .admin-btn { background: #1a1f2e; color: #fff; }
+
+  /* ── PAGES ── */
+  .page { display: none; min-height: calc(100vh - 62px); }
+  .page.active { display: block; }
+
+  /* ── HOME ── */
+  .banner {
+    background: linear-gradient(120deg, #1a0a0a 0%, #2d0b0b 40%, #1a1f2e 100%);
+    padding: 48px 40px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 70% 50%, rgba(227,28,37,.18) 0%, transparent 60%);
+  }
+  .banner-text { position: relative; z-index: 1; }
+  .banner-text h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1.05;
+    color: #fff;
+  }
+  .banner-text h1 span { color: var(--red); }
+  .banner-text p { color: var(--dim); margin-top: 12px; font-size: 16px; }
+  .banner-text .shop-btn {
+    margin-top: 20px;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 13px 32px;
+    border-radius: 6px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .banner-text .shop-btn:hover { background: var(--red-dark); }
+
+  .categories {
+    padding: 32px 40px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+  .categories h2 { font-size: 18px; font-weight: 800; margin-bottom: 16px; color: var(--text); }
+  .cat-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+  .cat-chip {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all .15s;
+  }
+  .cat-chip:hover, .cat-chip.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+  .products-section { padding: 32px 40px; }
+  .products-section h2 { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+  .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+  .product-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px #0005; }
+  .product-img {
+    background: linear-gradient(135deg, #1a2040, #0f1520);
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+  }
+  .product-info { padding: 14px; }
+  .product-info h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; line-height: 1.4; }
+  .product-info .price { color: var(--red); font-weight: 800; font-size: 16px; }
+  .product-info .old-price { color: var(--dim); text-decoration: line-through; font-size: 12px; }
+  .add-cart-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 8px;
+    border-radius: 5px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .add-cart-btn:hover { background: var(--red-dark); }
+
+  /* ── AUTH PAGES ── */
+  .auth-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 62px);
+    background: radial-gradient(ellipse at 30% 60%, rgba(227,28,37,.1) 0%, transparent 60%), var(--dark);
+    padding: 40px 20px;
+  }
+  .auth-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px #0008;
+  }
+  .auth-box h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 30px;
+    font-weight: 900;
+    margin-bottom: 6px;
+  }
+  .auth-box p { color: var(--dim); font-size: 14px; margin-bottom: 28px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--dim); }
+  .form-group input {
+    width: 100%;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .form-group input:focus { border-color: var(--red); }
+  .auth-btn {
+    width: 100%;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 7px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background .15s;
+  }
+  .auth-btn:hover { background: var(--red-dark); }
+  .auth-links { margin-top: 18px; text-align: center; font-size: 13px; color: var(--dim); }
+  .auth-links a { color: var(--red); cursor: pointer; font-weight: 700; }
+  .auth-links a:hover { text-decoration: underline; }
+
+  /* ── CART ── */
+  .cart-wrap { padding: 32px 40px; max-width: 900px; margin: 0 auto; }
+  .cart-wrap h2 { font-size: 24px; font-weight: 800; margin-bottom: 24px; }
+  .cart-empty { text-align: center; color: var(--dim); padding: 60px; font-size: 16px; }
+  .cart-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .cart-item .item-icon { font-size: 36px; width: 50px; text-align: center; flex-shrink: 0; }
+  .cart-item .item-info { flex: 1; }
+  .cart-item .item-info h4 { font-size: 15px; font-weight: 700; }
+  .cart-item .item-info .item-price { color: var(--red); font-weight: 800; margin-top: 4px; }
+  .qty-ctrl { display: flex; align-items: center; gap: 10px; }
+  .qty-ctrl button {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 30px; height: 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .qty-ctrl span { font-weight: 700; min-width: 24px; text-align: center; }
+  .remove-btn {
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 20px;
+    transition: color .15s;
+  }
+  .remove-btn:hover { color: var(--red); }
+  .cart-summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-top: 20px;
+  }
+  .cart-summary .total { font-size: 20px; font-weight: 800; display: flex; justify-content: space-between; }
+  .cart-summary .total span { color: var(--red); }
+  .checkout-btn {
+    width: 100%;
+    margin-top: 16px;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 7px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .checkout-btn:hover { background: var(--red-dark); }
+
+  /* ── CUSTOMER ── */
+  .customer-wrap { padding: 32px 40px; max-width: 700px; margin: 0 auto; }
+  .profile-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    margin-bottom: 20px;
+  }
+  .profile-avatar { font-size: 64px; text-align: center; margin-bottom: 12px; }
+  .profile-name { font-size: 22px; font-weight: 800; text-align: center; }
+  .profile-email { color: var(--dim); text-align: center; margin-top: 4px; font-size: 14px; }
+  .order-history h3 { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+  .order-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .order-row .order-id { font-weight: 700; }
+  .order-row .order-product { color: var(--dim); font-size: 13px; margin-top: 3px; }
+  .status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .status-done { background: rgba(34,197,94,.15); color: var(--green); }
+  .status-shipping { background: rgba(59,130,246,.15); color: var(--blue); }
+  .status-pending { background: rgba(245,158,11,.15); color: var(--amber); }
+  .status-cancel { background: rgba(239,68,68,.15); color: #ef4444; }
+
+  /* ── ADMIN ── */
+  .admin-wrap { display: flex; min-height: calc(100vh - 62px); }
+  .admin-sidebar {
+    width: 220px;
+    background: #0d1120;
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    flex-shrink: 0;
+  }
+  .admin-sidebar h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--dim);
+    padding: 0 20px;
+    margin-bottom: 8px;
+  }
+  .sidebar-item {
+    padding: 12px 20px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--dim);
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar-item:hover, .sidebar-item.active { background: rgba(227,28,37,.12); color: var(--red); }
+  .admin-content { flex: 1; padding: 32px; overflow: auto; }
+  .admin-content h2 { font-size: 22px; font-weight: 800; margin-bottom: 24px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .stat-card .stat-label { font-size: 12px; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .stat-value { font-size: 28px; font-weight: 900; margin-top: 8px; font-family: 'Barlow Condensed', sans-serif; }
+  .stat-card .stat-value.red { color: var(--red); }
+  .stat-card .stat-value.green { color: var(--green); }
+  .stat-card .stat-value.blue { color: var(--blue); }
+
+  /* ── TABLE ── */
+  .data-table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .data-table-toolbar {
+    padding: 14px 18px;
+    background: #0d1120;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .toolbar-btn {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all .15s;
+  }
+  .toolbar-btn:hover { border-color: var(--red); color: var(--red); }
+  .toolbar-btn.green { background: rgba(34,197,94,.15); color: var(--green); border-color: var(--green); }
+  .toolbar-btn.red { background: rgba(239,68,68,.15); color: #ef4444; border-color: #ef4444; }
+  .toolbar-btn.blue { background: rgba(59,130,246,.15); color: var(--blue); border-color: var(--blue); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: #0d1120;
+    color: var(--dim);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 13px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  tr:hover td { background: rgba(227,28,37,.06); }
+  tr.selected td { background: rgba(227,28,37,.12); }
+
+  /* ── SEARCH RESULTS ── */
+  .search-result-wrap { padding: 32px 40px; }
+  .search-result-wrap h2 { font-size: 22px; font-weight: 800; margin-bottom: 20px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--green);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 4px 20px #0006;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .25s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── FILTER SELECT ── */
+  select {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .products-grid { grid-template-columns: repeat(2, 1fr); }
+    header { padding: 0 14px; gap: 10px; }
+    .search-bar { max-width: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo" onclick="showPage('home')">GEARVN</div>
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Tìm kiếm sản phẩm...">
+    <button onclick="doSearch()">🔍</button>
+  </div>
+  <div class="header-btns">
+    <button class="admin-btn" onclick="showPage('admin')">⚙ Admin</button>
+    <button onclick="showPage('login')">Đăng nhập</button>
+    <button onclick="showPage('customer')">👤 Tài khoản</button>
+    <button onclick="showPage('cart')" id="cartBtn">🛒 Giỏ hàng (0)</button>
+  </div>
+</header>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════ HOME ══════════════════════ -->
+<div class="page active" id="page-home">
+  <div class="banner">
+    <div class="banner-text">
+      <h1>Gaming Gear<br><span>Đỉnh Cao</span><br>Giá Tốt Nhất</h1>
+      <p>Laptop, Chuột, Bàn phím, Tai nghe gaming chính hãng</p>
+      <button class="shop-btn" onclick="showPage('products')">🛒 Mua ngay</button>
+    </div>
+  </div>
+
+  <div class="categories">
+    <h2>Danh mục sản phẩm</h2>
+    <div class="cat-grid">
+      <div class="cat-chip active" onclick="filterCategory('all',this)">🎮 Tất cả</div>
+      <div class="cat-chip" onclick="filterCategory('laptop',this)">💻 Laptop Gaming</div>
+      <div class="cat-chip" onclick="filterCategory('mouse',this)">🖱️ Chuột Gaming</div>
+      <div class="cat-chip" onclick="filterCategory('keyboard',this)">⌨️ Bàn phím</div>
+      <div class="cat-chip" onclick="filterCategory('headset',this)">🎧 Tai nghe</div>
+      <div class="cat-chip" onclick="filterCategory('monitor',this)">🖥️ Màn hình</div>
+      <div class="cat-chip" onclick="filterCategory('chair',this)">🪑 Ghế Gaming</div>
+    </div>
+  </div>
+
+  <div class="products-section">
+    <h2>Sản phẩm nổi bật</h2>
+    <div class="products-grid" id="productsGrid"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ LOGIN ══════════════════════ -->
+<div class="page" id="page-login">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <h2>Đăng nhập</h2>
+      <p>Chào mừng trở lại GEARVN!</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="loginPass" placeholder="••••••••">
+      </div>
+      <button class="auth-btn" onclick="doLogin()">Đăng nhập</button>
+      <div class="auth-links">
+        <a onclick="showPage('forgot')">Quên mật khẩu?</a> &nbsp;·&nbsp;
+        Chưa có tài khoản? <a onclick="showPage('register')">Đăng ký</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ REGISTER ══════════════════════ -->
+<div class="page" id="page-register">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <h2>Đăng ký</h2>
+      <p>Tạo tài khoản GEARVN mới</p>
+      <div class="form-group">
+        <label>Họ và tên</label>
+        <input type="text" id="regName" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="regPass" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label>Xác nhận mật khẩu</label>
+        <input type="password" id="regPass2" placeholder="••••••••">
+      </div>
+      <button class="auth-btn" onclick="doRegister()">Đăng ký</button>
+      <div class="auth-links">Đã có tài khoản? <a onclick="showPage('login')">Đăng nhập</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ FORGOT PASSWORD ══════════════════════ -->
+<div class="page" id="page-forgot">
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <h2>Quên mật khẩu</h2>
+      <p>Nhập email để nhận link đặt lại mật khẩu</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="forgotEmail" placeholder="email@example.com">
+      </div>
+      <button class="auth-btn" onclick="doForgot()">Gửi email đặt lại</button>
+      <div class="auth-links"><a onclick="showPage('login')">← Quay lại đăng nhập</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ CART ══════════════════════ -->
+<div class="page" id="page-cart">
+  <div class="cart-wrap">
+    <h2>🛒 Giỏ hàng</h2>
+    <div id="cartContent"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ CUSTOMER ══════════════════════ -->
+<div class="page" id="page-customer">
+  <div class="customer-wrap">
+    <div class="profile-card">
+      <div class="profile-avatar">👤</div>
+      <div class="profile-name">Nguyễn Văn A</div>
+      <div class="profile-email">user@email.com</div>
+    </div>
+    <div class="order-history">
+      <h3>Lịch sử đơn hàng</h3>
+      <div class="order-row">
+        <div>
+          <div class="order-id">#GVN-2501</div>
+          <div class="order-product">Laptop ASUS ROG Strix G16 — 32.900.000đ</div>
+          <div class="order-product" style="margin-top:2px;color:var(--dim);font-size:12px">01/05/2025</div>
+        </div>
+        <span class="status-badge status-done">Đã giao</span>
+      </div>
+      <div class="order-row">
+        <div>
+          <div class="order-id">#GVN-2502</div>
+          <div class="order-product">Chuột Logitech G Pro X Superlight — 2.490.000đ</div>
+          <div class="order-product" style="margin-top:2px;color:var(--dim);font-size:12px">02/05/2025</div>
+        </div>
+        <span class="status-badge status-shipping">Đang giao</span>
+      </div>
+      <div class="order-row">
+        <div>
+          <div class="order-id">#GVN-2503</div>
+          <div class="order-product">Bàn phím Razer BlackWidow V3 — 3.290.000đ</div>
+          <div class="order-product" style="margin-top:2px;color:var(--dim);font-size:12px">03/05/2025</div>
+        </div>
+        <span class="status-badge status-pending">Chờ xác nhận</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ ADMIN ══════════════════════ -->
+<div class="page" id="page-admin">
+  <div class="admin-wrap">
+    <div class="admin-sidebar">
+      <h3>Quản lý</h3>
+      <div class="sidebar-item active" onclick="showAdminTab('orders',this)">📦 Đơn hàng</div>
+      <div class="sidebar-item" onclick="showAdminTab('products',this)">🛍️ Sản phẩm</div>
+      <div class="sidebar-item" onclick="showAdminTab('users',this)">👥 Khách hàng</div>
+      <div class="sidebar-item" onclick="showAdminTab('stats',this)">📊 Thống kê</div>
+    </div>
+    <div class="admin-content">
+      <!-- ORDERS TAB -->
+      <div id="admin-orders">
+        <h2>Quản lý Đơn hàng</h2>
+        <div class="stats-grid" style="margin-bottom:24px">
+          <div class="stat-card"><div class="stat-label">Tổng đơn</div><div class="stat-value red">47</div></div>
+          <div class="stat-card"><div class="stat-label">Chờ xác nhận</div><div class="stat-value" style="color:var(--amber)">8</div></div>
+          <div class="stat-card"><div class="stat-label">Đang giao</div><div class="stat-value blue">12</div></div>
+          <div class="stat-card"><div class="stat-label">Đã giao</div><div class="stat-value green">23</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <label style="color:var(--dim);font-size:13px;font-weight:700">Lọc:</label>
+          <select id="orderFilter" onchange="filterOrders()">
+            <option>Tất cả</option>
+            <option>Chờ xác nhận</option>
+            <option>Đang giao</option>
+            <option>Đã giao</option>
+            <option>Đã hủy</option>
+          </select>
+        </div>
+        <div class="data-table-wrap">
+          <div class="data-table-toolbar">
+            <button class="toolbar-btn green" onclick="setOrderStatus('Đang giao')">✔ Xác nhận</button>
+            <button class="toolbar-btn blue" onclick="setOrderStatus('Đang giao')">🚚 Đang giao</button>
+            <button class="toolbar-btn green" onclick="setOrderStatus('Đã giao')">✅ Đã giao</button>
+            <button class="toolbar-btn red" onclick="setOrderStatus('Đã hủy')">✕ Hủy đơn</button>
+            <button class="toolbar-btn" onclick="showOrderDetail()">🔍 Chi tiết</button>
+          </div>
+          <table id="ordersTable">
+            <thead>
+              <tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày đặt</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Trạng thái</th></tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- PRODUCTS TAB -->
+      <div id="admin-products" style="display:none">
+        <h2>Quản lý Sản phẩm</h2>
+        <div class="data-table-wrap">
+          <div class="data-table-toolbar">
+            <button class="toolbar-btn green">➕ Thêm sản phẩm</button>
+            <button class="toolbar-btn">✏️ Sửa</button>
+            <button class="toolbar-btn red">🗑 Xóa</button>
+          </div>
+          <table>
+            <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Tồn kho</th></tr></thead>
+            <tbody id="adminProductsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- USERS TAB -->
+      <div id="admin-users" style="display:none">
+        <h2>Quản lý Khách hàng</h2>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>Tên</th><th>Email</th><th>Tổng đơn</th><th>Chi tiêu</th></tr></thead>
+            <tbody>
+              <tr><td>Nguyễn Văn An</td><td>an@email.com</td><td>5</td><td>42.500.000đ</td></tr>
+              <tr><td>Trần Thị Bình</td><td>binh@email.com</td><td>3</td><td>18.200.000đ</td></tr>
+              <tr><td>Lê Minh Châu</td><td>chau@email.com</td><td>7</td><td>67.900.000đ</td></tr>
+              <tr><td>Phạm Hoàng Dũng</td><td>dung@email.com</td><td>2</td><td>5.800.000đ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- STATS TAB -->
+      <div id="admin-stats" style="display:none">
+        <h2>Thống kê</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Doanh thu tháng</div><div class="stat-value red">842.5M</div></div>
+          <div class="stat-card"><div class="stat-label">Đơn hàng</div><div class="stat-value blue">47</div></div>
+          <div class="stat-card"><div class="stat-label">Khách hàng</div><div class="stat-value green">234</div></div>
+          <div class="stat-card"><div class="stat-label">Sản phẩm bán</div><div class="stat-value" style="color:var(--amber)">128</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ SEARCH RESULT ══════════════════════ -->
+<div class="page" id="page-search">
+  <div class="search-result-wrap">
+    <h2 id="searchTitle">Kết quả tìm kiếm</h2>
+    <div class="products-grid" id="searchGrid"></div>
+  </div>
+</div>
+
+<script>
+const BASE_URL = 'https://gearvn-x1pw.onrender.com';
+
+// ── DỮ LIỆU SẢN PHẨM ────────────────────────────────────────────────────────
+const allProducts = [
+  { id:1, name:'Laptop ASUS ROG Strix G16', price:'32.900.000đ', oldPrice:'36.000.000đ', cat:'laptop', icon:'💻' },
+  { id:2, name:'Laptop MSI Katana 15', price:'22.500.000đ', oldPrice:'25.000.000đ', cat:'laptop', icon:'💻' },
+  { id:3, name:'Laptop Lenovo LOQ 15', price:'19.900.000đ', oldPrice:'22.000.000đ', cat:'laptop', icon:'💻' },
+  { id:4, name:'Laptop Acer Nitro 16', price:'21.990.000đ', oldPrice:'24.000.000đ', cat:'laptop', icon:'💻' },
+  { id:5, name:'Chuột Logitech G Pro X Superlight', price:'2.490.000đ', oldPrice:'2.890.000đ', cat:'mouse', icon:'🖱️' },
+  { id:6, name:'Chuột Razer DeathAdder V3', price:'1.890.000đ', oldPrice:'2.190.000đ', cat:'mouse', icon:'🖱️' },
+  { id:7, name:'Chuột SteelSeries Rival 3', price:'690.000đ', oldPrice:'850.000đ', cat:'mouse', icon:'🖱️' },
+  { id:8, name:'Bàn phím Razer BlackWidow V3', price:'3.290.000đ', oldPrice:'3.800.000đ', cat:'keyboard', icon:'⌨️' },
+  { id:9, name:'Bàn phím Akko 3098B', price:'1.250.000đ', oldPrice:'1.490.000đ', cat:'keyboard', icon:'⌨️' },
+  { id:10, name:'Bàn phím Corsair K70 RGB', price:'3.890.000đ', oldPrice:'4.200.000đ', cat:'keyboard', icon:'⌨️' },
+  { id:11, name:'Tai nghe Razer Barracuda X', price:'2.890.000đ', oldPrice:'3.200.000đ', cat:'headset', icon:'🎧' },
+  { id:12, name:'Tai nghe HyperX Cloud III', price:'2.190.000đ', oldPrice:'2.490.000đ', cat:'headset', icon:'🎧' },
+  { id:13, name:'Màn hình LG 27GP850B', price:'8.490.000đ', oldPrice:'9.500.000đ', cat:'monitor', icon:'🖥️' },
+  { id:14, name:'Màn hình ASUS ROG Swift 240Hz', price:'12.900.000đ', oldPrice:'14.000.000đ', cat:'monitor', icon:'🖥️' },
+  { id:15, name:'Ghế Gaming E-Dra EGC228', price:'3.490.000đ', oldPrice:'3.990.000đ', cat:'chair', icon:'🪑' },
+  { id:16, name:'Ghế Gaming DXRacer Formula', price:'5.890.000đ', oldPrice:'6.500.000đ', cat:'chair', icon:'🪑' },
+];
+
+// ── ĐƠN HÀNG ADMIN ──────────────────────────────────────────────────────────
+const ordersData = [
+  { id:'#GVN-2501', name:'Nguyễn Văn An',    date:'01/05/2025', product:'Laptop ASUS ROG Strix G16',    total:'32.900.000đ', status:'Đã giao' },
+  { id:'#GVN-2502', name:'Trần Thị Bình',    date:'02/05/2025', product:'Chuột Logitech G Pro X',       total:'2.490.000đ',  status:'Đang giao' },
+  { id:'#GVN-2503', name:'Lê Minh Châu',     date:'02/05/2025', product:'Bàn phím Razer BlackWidow V3', total:'3.290.000đ',  status:'Chờ xác nhận' },
+  { id:'#GVN-2504', name:'Phạm Hoàng Dũng',  date:'03/05/2025', product:'Tai nghe HyperX Cloud III',    total:'2.190.000đ',  status:'Đã giao' },
+  { id:'#GVN-2505', name:'Hoàng Văn Em',     date:'03/05/2025', product:'Laptop MSI Katana',             total:'22.500.000đ', status:'Đã hủy' },
+  { id:'#GVN-2506', name:'Vũ Thị Phương',    date:'04/05/2025', product:'Chuột Logitech G502 X',        total:'1.290.000đ',  status:'Đang giao' },
+  { id:'#GVN-2507', name:'Đặng Minh Quân',   date:'04/05/2025', product:'Bàn phím Akko 3098B',          total:'1.250.000đ',  status:'Chờ xác nhận' },
+  { id:'#GVN-2508', name:'Bùi Lan Anh',      date:'05/05/2025', product:'Tai nghe Razer Barracuda',      total:'2.890.000đ',  status:'Chờ xác nhận' },
+];
+
+let cart = [];
+let selectedOrderRow = -1;
+let currentFilter = 'all';
+
+// ── NAVIGATION ──────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'cart') renderCart();
+  if (name === 'home') renderProducts(currentFilter);
+}
+
+// ── PRODUCTS ─────────────────────────────────────────────────────────────────
+function renderProducts(cat) {
+  const grid = document.getElementById('productsGrid');
+  const filtered = cat === 'all' ? allProducts : allProducts.filter(p => p.cat === cat);
+  grid.innerHTML = filtered.map(p => productCard(p)).join('');
+}
+
+function productCard(p) {
+  return `<div class="product-card">
+    <div class="product-img">${p.icon}</div>
+    <div class="product-info">
+      <h3>${p.name}</h3>
+      <div class="price">${p.price}</div>
+      <div class="old-price">${p.oldPrice}</div>
+      <button class="add-cart-btn" onclick="addToCart(${p.id})">🛒 Thêm vào giỏ</button>
+    </div>
+  </div>`;
+}
+
+function filterCategory(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderProducts(cat);
+}
+
+// ── CART ─────────────────────────────────────────────────────────────────────
+function addToCart(id) {
+  const p = allProducts.find(x => x.id === id);
+  const existing = cart.find(x => x.id === id);
+  if (existing) existing.qty++;
+  else cart.push({ ...p, qty: 1 });
+  updateCartBtn();
+  showToast('Đã thêm vào giỏ hàng! 🛒');
+}
+
+function updateCartBtn() {
+  const total = cart.reduce((s, x) => s + x.qty, 0);
+  document.getElementById('cartBtn').textContent = `🛒 Giỏ hàng (${total})`;
+}
+
+function renderCart() {
+  const el = document.getElementById('cartContent');
+  if (cart.length === 0) {
+    el.innerHTML = '<div class="cart-empty">🛒<br><br>Giỏ hàng trống</div>';
+    return;
+  }
+  const priceToNum = s => parseInt(s.replace(/\./g,'').replace('đ',''));
+  const total = cart.reduce((s, x) => s + priceToNum(x.price) * x.qty, 0);
+  el.innerHTML = cart.map((item, i) => `
+    <div class="cart-item">
+      <div class="item-icon">${item.icon}</div>
+      <div class="item-info">
+        <h4>${item.name}</h4>
+        <div class="item-price">${item.price}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button onclick="changeQty(${i},-1)">−</button>
+        <span>${item.qty}</span>
+        <button onclick="changeQty(${i},1)">+</button>
+      </div>
+      <button class="remove-btn" onclick="removeCart(${i})">✕</button>
+    </div>
+  `).join('') + `
+    <div class="cart-summary">
+      <div class="total">Tổng cộng: <span>${total.toLocaleString('vi-VN')}đ</span></div>
+      <button class="checkout-btn" onclick="checkout()">Đặt hàng ngay →</button>
+    </div>`;
+}
+
+function changeQty(i, d) {
+  cart[i].qty += d;
+  if (cart[i].qty <= 0) cart.splice(i, 1);
+  updateCartBtn();
+  renderCart();
+}
+
+function removeCart(i) {
+  cart.splice(i, 1);
+  updateCartBtn();
+  renderCart();
+}
+
+function checkout() {
+  cart = [];
+  updateCartBtn();
+  renderCart();
+  showToast('Đặt hàng thành công! 🎉');
+  setTimeout(() => showPage('home'), 1500);
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function doLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  if (!email || !pass) { showToast('Vui lòng nhập đầy đủ thông tin!'); return; }
+  fetch(BASE_URL + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass })
+  }).then(r => r.json()).then(data => {
+    showToast('Đăng nhập thành công!');
+    showPage('home');
+  }).catch(() => {
+    showToast('Đăng nhập thành công! (demo)');
+    showPage('home');
+  });
+}
+
+function doRegister() {
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  if (!name || !email || !pass) { showToast('Vui lòng nhập đầy đủ!'); return; }
+  if (pass !== pass2) { showToast('Mật khẩu không khớp!'); return; }
+  showToast('Đăng ký thành công! 🎉');
+  setTimeout(() => showPage('login'), 1200);
+}
+
+function doForgot() {
+  const email = document.getElementById('forgotEmail').value;
+  if (!email) { showToast('Nhập email của bạn!'); return; }
+  showToast('Đã gửi email đặt lại mật khẩu!');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) return;
+  const results = allProducts.filter(p => p.name.toLowerCase().includes(q));
+  document.getElementById('searchTitle').textContent = `Kết quả cho "${q}" (${results.length} sản phẩm)`;
+  document.getElementById('searchGrid').innerHTML = results.length
+    ? results.map(p => productCard(p)).join('')
+    : '<p style="color:var(--dim)">Không tìm thấy sản phẩm phù hợp.</p>';
+  showPage('search');
+}
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+// ── ADMIN ────────────────────────────────────────────────────────────────────
+function showAdminTab(tab, el) {
+  ['orders','products','users','stats'].forEach(t => {
+    document.getElementById('admin-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function renderOrders(filter) {
+  const tbody = document.getElementById('ordersBody');
+  const data = filter && filter !== 'Tất cả'
+    ? ordersData.filter(o => o.status === filter)
+    : ordersData;
+  tbody.innerHTML = data.map((o, i) => `
+    <tr onclick="selectOrder(${i})" id="orow-${i}">
+      <td><strong>${o.id}</strong></td>
+      <td>${o.name}</td>
+      <td>${o.date}</td>
+      <td>${o.product}</td>
+      <td style="color:var(--red);font-weight:700">${o.total}</td>
+      <td>${statusBadge(o.status)}</td>
+    </tr>
+  `).join('');
+
+  // Admin products
+  document.getElementById('adminProductsBody').innerHTML = allProducts.map(p => `
+    <tr><td>${p.name}</td><td>${p.cat}</td><td style="color:var(--red);font-weight:700">${p.price}</td><td>Còn hàng</td></tr>
+  `).join('');
+}
+
+function statusBadge(s) {
+  const map = { 'Đã giao':'status-done','Đang giao':'status-shipping','Chờ xác nhận':'status-pending','Đã hủy':'status-cancel' };
+  return `<span class="status-badge ${map[s]||''}">${s}</span>`;
+}
+
+function selectOrder(i) {
+  selectedOrderRow = i;
+  document.querySelectorAll('#ordersBody tr').forEach(r => r.classList.remove('selected'));
+  const row = document.getElementById('orow-' + i);
+  if (row) row.classList.add('selected');
+}
+
+function setOrderStatus(status) {
+  if (selectedOrderRow < 0) { showToast('Chọn đơn hàng trước!'); return; }
+  ordersData[selectedOrderRow].status = status;
+  renderOrders(document.getElementById('orderFilter').value);
+  showToast(`Đã cập nhật: ${status}`);
+}
+
+function showOrderDetail() {
+  if (selectedOrderRow < 0) { showToast('Chọn đơn hàng trước!'); return; }
+  const o = ordersData[selectedOrderRow];
+  alert(`Mã đơn  : ${o.id}\nKhách   : ${o.name}\nNgày    : ${o.date}\nSP      : ${o.product}\nTổng    : ${o.total}\nTT      : ${o.status}`);
+}
+
+function filterOrders() {
+  renderOrders(document.getElementById('orderFilter').value);
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+renderProducts('all');
+renderOrders();
+</script>
+</body>
+</html>
