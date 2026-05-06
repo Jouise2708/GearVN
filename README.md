@@ -42,16 +42,6 @@ GearVN/
 - **orders**: Đơn hàng
 - **order_items**: Chi tiết từng item trong đơn hàng
 
-### Tài khoản demo
-
-```
-Email: admin@gmail.com
-Password: 123456
-
-Email: user@gmail.com
-Password: 123456
-```
-
 ## Hướng dẫn cài đặt
 
 ### Yêu cầu
