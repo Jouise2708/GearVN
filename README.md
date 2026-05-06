@@ -111,4 +111,4 @@ Chúng tôi hoan nghênh các pull request! Vui lòng:
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
 
-**Cảm ơn bạn đã sử dụng GearVN!** 🎮
+**Cảm ơn bạn đã sử dụng GearVN!**
