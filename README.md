@@ -3,11 +3,11 @@
 ![Java](https://img.shields.io/badge/Java-100%25-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## 📋 Giới thiệu
+## Giới thiệu
 
 **GearVN** là một nền tảng thương mại điện tử chuyên bán các thiết bị gaming chất lượng cao. Dự án bao gồm backend Java và frontend, cung cấp các tính năng quản lý sản phẩm, giỏ hàng, đơn hàng và tài khoản người dùng.
 
-## 🎮 Các sản phẩm
+## Các sản phẩm
 
 - **Laptop Gaming** - ASUS ROG, MSI, Acer Nitro, Lenovo Legion...
 - **Chuột Gaming** - Razer, Logitech, Corsair, SteelSeries...
@@ -16,13 +16,13 @@
 - **Màn hình Gaming** - ASUS TUF, MSI, LG UltraGear, Samsung Odyssey...
 - **Linh kiện PC** - CPU, GPU, RAM, SSD...
 
-## 🛠️ Công nghệ sử dụng
+## Công nghệ sử dụng
 
 - **Backend**: Java
 - **Database**: SQL Server (T-SQL)
 - **Frontend**: (Frontend framework - xem thêm trong thư mục `/frontend`)
 
-## 📁 Cấu trúc dự án
+## Cấu trúc dự án
 
 ```
 GearVN/
@@ -32,7 +32,7 @@ GearVN/
 └── README.md          # File này
 ```
 
-## 🗄️ Cơ sở dữ liệu
+## Cơ sở dữ liệu
 
 ### Bảng chính
 
@@ -52,7 +52,7 @@ Email: user@gmail.com
 Password: 123456
 ```
 
-## 🚀 Hướng dẫn cài đặt
+## Hướng dẫn cài đặt
 
 ### Yêu cầu
 
@@ -90,28 +90,28 @@ Password: 123456
    npm start
    ```
 
-## 📖 Tính năng chính
+## Tính năng chính
 
-- ✅ Xem danh sách sản phẩm
-- ✅ Tìm kiếm và lọc sản phẩm
-- ✅ Giỏ hàng (thêm/xoá sản phẩm)
-- ✅ Đặt hàng
-- ✅ Quản lý đơn hàng
-- ✅ Hệ thống tài khoản người dùng
-- ✅ Xác thực người dùng (Login/Register)
+- Xem danh sách sản phẩm
+- Tìm kiếm và lọc sản phẩm
+- Giỏ hàng (thêm/xoá sản phẩm)
+- Đặt hàng
+- Quản lý đơn hàng
+- Hệ thống tài khoản người dùng
+- Xác thực người dùng (Login/Register)
 
-## 🔒 Bảo mật
+## Bảo mật
 
 - Mật khẩu được mã hóa bằng bcrypt
 - Hỗ trợ xác thực người dùng
 
-## 📝 Các trạng thái đơn hàng
+## Các trạng thái đơn hàng
 
 - `PENDING`: Chờ xử lý
 - `COMPLETED`: Hoàn thành
 - `CANCELLED`: Huỷ bỏ
 
-## 🤝 Cộng tác
+## Cộng tác
 
 Chúng tôi hoan nghênh các pull request! Vui lòng:
 
@@ -120,16 +120,5 @@ Chúng tôi hoan nghênh các pull request! Vui lòng:
 3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
-
-## 📧 Liên hệ
-
-- **Tác giả**: Jouise2708
-- **GitHub**: [Jouise2708](https://github.com/Jouise2708)
-
-## 📄 Giấy phép
-
-Dự án này được cấp phép dưới giấy phép MIT. Xem file `LICENSE` để biết thêm chi tiết.
-
----
 
 **Cảm ơn bạn đã sử dụng GearVN!** 🎮
